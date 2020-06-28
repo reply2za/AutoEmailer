@@ -201,12 +201,12 @@ public class ViewImpl extends JFrame {
     emailToMenuItem.addActionListener(e -> {
       emailAnyone = !emailAnyone;
       if (emailAnyone) {
-        emailToMenuItem.setText("Email anyone");
+        emailToMenuItem.setText("Email me");
         name = "";
         updateRecipientComponents();
         frame.setTitle(" Auto Emailer");
       } else {
-        emailToMenuItem.setText("Email me");
+        emailToMenuItem.setText("Email anyone");
         name = "Zain";
         updateRecipientComponents();
         frame.setTitle("Email Myself");
