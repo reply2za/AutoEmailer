@@ -11,10 +11,12 @@ import javax.mail.internet.MimeMessage;
 
 
 public class JavaMailUtil {
+
   private static String email;
   private static String pass;
 
-  protected static void sendMail(String recipient, String subjectText, String bodyText) throws Exception {
+  protected static void sendMail(String recipient, String subjectText, String bodyText)
+      throws Exception {
     setCredentials();
     //System.out.println("Sending message...");
     Properties p = new Properties();
@@ -58,7 +60,6 @@ public class JavaMailUtil {
     email = "simple.emailer.d@gmail.com";
     pass = "Zadkuc101!k";
   }
-
 } 
 
 /*
