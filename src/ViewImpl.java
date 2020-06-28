@@ -3,6 +3,8 @@ import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
@@ -24,7 +26,7 @@ import javax.swing.border.TitledBorder;
 
 public class ViewImpl extends JFrame {
 
-  private JLabel recipientL;
+  private final JLabel recipientL;
   private String name;
   private final JTextArea textBox;
   private final JTextField recipientTextField;
@@ -34,12 +36,13 @@ public class ViewImpl extends JFrame {
   private final JButton stopButton;
   private final JTextField countTextField;
   private boolean isStopped;
-  private JPanel bottomPanel;
-  private JFrame frame;
+  private final JFrame frame;
   private boolean taskMode;
-  JMenuItem showCounterMenuItem;
-  JMenuItem hideCounterMenuItem;
+  private boolean showCounter;
+  private boolean emailAnyone;
+  JMenuItem counterMenuItem;
   JMenuItem taskModeMenu;
+  JMenuItem emailToMenuItem;
 
   ViewImpl() {
     if (System.getProperty("os.name").contains("Mac")) {
@@ -73,24 +76,22 @@ public class ViewImpl extends JFrame {
     mb.add(helpMenu);
     JMenuItem m11 = new JMenuItem("Open");
     JMenuItem m12 = new JMenuItem("Save as");
-    JMenuItem emailMeMenuItem = new JMenuItem("Email Me");
-    JMenuItem emailAnyoneMenuItem = new JMenuItem("Email anyone");
-    showCounterMenuItem = new JMenuItem("Show counter");
-    hideCounterMenuItem = new JMenuItem("Hide counter");
+    emailToMenuItem = new JMenuItem("Email me");
+    counterMenuItem = new JMenuItem("Show counter");
     taskModeMenu = new JMenuItem("Enable task mode");
     fileMenu.add(m11);
     fileMenu.add(m12);
-    advancedMenu.add(showCounterMenuItem);
-    advancedMenu.add(hideCounterMenuItem);
-    advancedMenu.add(emailMeMenuItem);
-    advancedMenu.add(emailAnyoneMenuItem);
+    advancedMenu.add(counterMenuItem);
+    advancedMenu.add(emailToMenuItem);
     advancedMenu.add(taskModeMenu);
+    showCounter = false;
+    emailAnyone = true;
 
     stopButton.setVisible(false);
     countTextField.setVisible(false);
 
     //Creating the components
-    this.bottomPanel = new JPanel(); // the panel is not visible in output
+    JPanel bottomPanel = new JPanel(); // the panel is not visible in output
     JLabel headingL = new JLabel("Enter heading");
     recipientTextField = new JTextField(16); // accepts upto 10 characters
     headerTextField = new JTextField(20); // accepts upto 10 characters
@@ -108,18 +109,6 @@ public class ViewImpl extends JFrame {
     b.setTitleColor(Color.DARK_GRAY);
     centerPanel.setBorder(b);
     JScrollPane scrollPane = new JScrollPane(textBox);
-
-    emailMeMenuItem.addActionListener(e -> {
-      name = "Zain";
-      updateRecipientComponents();
-      frame.setTitle("Email Myself");
-    });
-
-    emailAnyoneMenuItem.addActionListener(e -> {
-      name = "";
-      updateRecipientComponents();
-      frame.setTitle(" Auto Emailer");
-    });
 
     JPanel headingBar = new JPanel();
     headingBar.setLayout(new FlowLayout());
@@ -171,12 +160,24 @@ public class ViewImpl extends JFrame {
       String r = recipientTextField.getText(); //recipient
       String t = textBox.getText();
       String h = headerTextField.getText();
-      if (r.length() < 7 || !r.contains("@")) {
-        error("Check recipient!");
-        return;
-      }
       if (h.isEmpty() || t.isEmpty()) {
         error("Empty fields!");
+        return;
+      }
+
+      if (r.length() < 7 || !r.contains("@")) {
+        //error("Check recipient!");
+        try {
+          String newH;
+          newH = h.replace(":", "");
+          FileWriter fw = new FileWriter(newH);
+          fw.write(t);
+          fw.close();
+          recipientL.setForeground(new Color(0, 134, 62));
+          recipientL.setText("Saved!");
+        } catch (IOException ioException) {
+          ioException.printStackTrace();
+        }
         return;
       }
 
@@ -197,21 +198,40 @@ public class ViewImpl extends JFrame {
       sw.execute();
     });
 
+    emailToMenuItem.addActionListener(e -> {
+      emailAnyone = !emailAnyone;
+      if (emailAnyone) {
+        emailToMenuItem.setText("Email anyone");
+        name = "";
+        updateRecipientComponents();
+        frame.setTitle(" Auto Emailer");
+      } else {
+        emailToMenuItem.setText("Email me");
+        name = "Zain";
+        updateRecipientComponents();
+        frame.setTitle("Email Myself");
+      }
+    });
+
     stopButton.addActionListener(e -> {
       this.isStopped = true;
     });
 
-    showCounterMenuItem.addActionListener(e -> {
-      stopButton.setVisible(true);
-      countTextField.setVisible(true);
-      if (frame.getWidth() < 610) {
-        frame.setSize(610, frame.getHeight());
+    counterMenuItem.addActionListener(e -> {
+      showCounter = !showCounter;
+      if (showCounter) {
+        counterMenuItem.setText("Hide counter");
+        stopButton.setVisible(true);
+        countTextField.setVisible(true);
+        if (frame.getWidth() < 610) {
+          frame.setSize(610, frame.getHeight());
+        }
+      } else {
+        counterMenuItem.setText("Show counter");
+        stopButton.setVisible(false);
+        countTextField.setVisible(false);
+        frame.setSize(480, frame.getHeight());
       }
-    });
-    hideCounterMenuItem.addActionListener(e -> {
-      stopButton.setVisible(false);
-      countTextField.setVisible(false);
-      frame.setSize(480, frame.getHeight());
     });
 
     taskModeMenu.addActionListener(e -> {
@@ -291,8 +311,9 @@ public class ViewImpl extends JFrame {
           if (taskMode) {
             // code to remove a tab from the middle of text
             String oTextBoxText = textBox.getText();
-            String text = "";
+            String text;
             int carrotPositioning = textBox.getCaretPosition();
+            //removing the inputted 'tab'
             if (oTextBoxText.length() == textBox.getCaretPosition()) {
               textBox.setText(oTextBoxText.substring(0, oTextBoxText.length() - 1));
               text = textBox.getText();
@@ -301,21 +322,43 @@ public class ViewImpl extends JFrame {
                   + oTextBoxText.substring(textBox.getCaretPosition());
             }
 
-            String[] textArray = text.split("-");
+            String[] textArray = text.split("\n");
             if (textArray.length == 0) {
               return;
             }
             int totalSoFar = 0;
             int arrayIndex = 0;
+            int carrotToEnd = 0;
             for (String s : textArray) {
               totalSoFar += s.length() + 1;
-              if (textBox.getCaretPosition() < totalSoFar) {
+              if (textBox.getCaretPosition() <= totalSoFar) {
+                //carrotToEnd = totalSoFar - textBox.getCaretPosition();
                 break;
               }
               arrayIndex++;
             }
+
             StringBuilder newText = new StringBuilder();
-            int beginningCutOff = totalSoFar - (textArray[arrayIndex].length() + 2);
+            int moveCursorBack = 0;
+
+/*            if(text.length() > textBox.getColumns()) {
+              StringBuilder newString = new StringBuilder();
+              int j = 0;
+              for (int i = text.length()/ textBox.getWidth() - 5 ; i > 0; i--) {
+                int newLength = Math.min(textBox.getWidth()*j - 5 * (j + 1), text.length());
+                newString.append(text.substring(textBox.getWidth() - 5 * j, newLength));
+                newString.append("\t");
+                j++;
+              }
+              text = newString.toString();
+            }*/
+
+            if (arrayIndex < textArray.length) {
+              moveCursorBack += (textArray[arrayIndex].length() + 1);
+            } else {
+              moveCursorBack++;
+            }
+            int beginningCutOff = totalSoFar - moveCursorBack;
 
             newText.append(text, 0, beginningCutOff);
             newText.append("\t");
@@ -331,7 +374,13 @@ public class ViewImpl extends JFrame {
             }
           }
         } else if (taskMode && e.getKeyChar() == KeyEvent.VK_ENTER) {
-          textBox.append("\n-");
+          StringBuilder sb = new StringBuilder();
+          String textBoxText = textBox.getText();
+          int cp = textBox.getCaretPosition();
+          sb.append(textBoxText, 0, cp).append("-");
+          sb.append(textBoxText.substring(cp));
+          textBox.setText(sb.toString());
+          textBox.setCaretPosition(cp + 1);
         }
       }
 
