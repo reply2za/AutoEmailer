@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -28,7 +29,7 @@ import javax.swing.border.TitledBorder;
 
 public class ViewImpl extends JFrame {
 
-  private final JLabel recipientL;
+  private final JLabel recipientLabel;
   private String name;
   private final JTextArea textBox;
   private final JTextField recipientTextField;
@@ -45,6 +46,15 @@ public class ViewImpl extends JFrame {
   JMenuItem counterMenuItem;
   JMenuItem taskModeMenuItem;
   JMenuItem emailToMenuItem;
+  JMenuItem darkLightMenuItem;
+  boolean isDarkMode;
+  private final JPanel centerPanel;
+  private final JPanel bottomPanel;
+  private final JPanel topPanel;
+  private final Preferences pp;
+  private final TitledBorder titledBorder;
+  private final JLabel headingLabel;
+  private Color appleWhite;
 
   ViewImpl() {
     if (System.getProperty("os.name").contains("Mac")) {
@@ -96,40 +106,54 @@ public class ViewImpl extends JFrame {
     countTextField.setVisible(false);
 
     //Creating the components
-    JPanel bottomPanel = new JPanel(); // the panel is not visible in output
-    JLabel headingL = new JLabel("Enter heading");
+    bottomPanel = new JPanel(); // the panel is not visible in output
+    headingLabel = new JLabel("Enter heading");
     recipientTextField = new JTextField(16); // accepts upto 10 characters
     headerTextField = new JTextField(20); // accepts upto 10 characters
-    sendButton = new JButton("Send");
+    sendButton = new JButton("Save");
     resetButton = new JButton("Reset");
-    recipientL = new JLabel();
+    recipientLabel = new JLabel();
 
     // Text Area at the Center
-    JPanel centerPanel = new JPanel();
+    centerPanel = new JPanel();
     centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.PAGE_AXIS));
     textBox = new JTextArea();
     textBox.setLineWrap(true);
     textBox.setWrapStyleWord(true);
-    TitledBorder b = BorderFactory.createTitledBorder("<HTML>Body of the email:</HTML>");
-    b.setTitleColor(Color.DARK_GRAY);
-    centerPanel.setBorder(b);
+    titledBorder = BorderFactory.createTitledBorder("<HTML>Body of the email:</HTML>");
+    titledBorder.setTitleColor(Color.DARK_GRAY);
+    centerPanel.setBorder(titledBorder);
     JScrollPane scrollPane = new JScrollPane(textBox);
-
-    JPanel headingBar = new JPanel();
-    headingBar.setLayout(new FlowLayout());
+    topPanel = new JPanel();
+    topPanel.setLayout(new FlowLayout());
 
     textBox.setTabSize(2);
     updateRecipientComponents();
 
     centerPanel.add(scrollPane);
-    headingBar.add(headingL);
-    headingBar.add(headerTextField);
-    bottomPanel.add(recipientL);
+    topPanel.add(headingLabel);
+    topPanel.add(headerTextField);
+    bottomPanel.add(recipientLabel);
     bottomPanel.add(recipientTextField);
     bottomPanel.add(sendButton);
     bottomPanel.add(resetButton);
     bottomPanel.add(countTextField);
     bottomPanel.add(stopButton);
+
+    // Set theme - experimental
+    appleWhite = new Color(238, 238, 238);
+    darkLightMenuItem = new JMenuItem("Dark mode");
+    darkLightMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D,
+        Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+    advancedMenu.add(darkLightMenuItem);
+    System.out.println(titledBorder.getTitleColor());
+    pp = ProgramPreferences.userRoot().node("prefs");
+    if (pp.get("dark", "false").equals("false")) {
+      isDarkMode = false;
+    } else {
+      isDarkMode = true;
+      activeColorTheme();
+    }
 
     initializeActionListeners();
     initializeKeyListeners();
@@ -138,19 +162,23 @@ public class ViewImpl extends JFrame {
     frame.getContentPane().add(BorderLayout.SOUTH, bottomPanel);
     frame.getContentPane().add(BorderLayout.CENTER, centerPanel);
     frame.setJMenuBar(mb);
-    frame.getContentPane().add(BorderLayout.NORTH, headingBar);
+    frame.getContentPane().add(BorderLayout.NORTH, topPanel);
     frame.setVisible(true);
 
-  }
+  } // end constructor ----------------------------
 
+
+  /**
+   * Updates the recipient components.
+   */
   private void updateRecipientComponents() {
     // changes the recipient label
     if (name.isEmpty()) {
-      recipientL.setText("Enter recipient:");
+      recipientLabel.setText("Enter recipient:");
       recipientTextField.setText("");
       recipientTextField.setVisible(true);
     } else {
-      recipientL.setText("Send to ".concat(name).concat(":"));
+      recipientLabel.setText("Send to ".concat(name).concat(":"));
       recipientTextField.setText(personToEmailD(name));
       recipientTextField.setVisible(false);
     }
@@ -160,7 +188,7 @@ public class ViewImpl extends JFrame {
 
   private void initializeActionListeners() {
     sendButton.addActionListener(e -> {
-      String r = recipientTextField.getText(); //recipient
+      String r = recipientTextField.getText().strip(); //recipient
       String t = textBox.getText();
       String h = headerTextField.getText();
       if (h.isEmpty() || t.isEmpty()) {
@@ -168,24 +196,30 @@ public class ViewImpl extends JFrame {
         return;
       }
 
-      if (r.length() < 7 || !r.contains("@")) {
-        //error("Check recipient!");
+      if (r.isBlank()) {
         try {
           String newH;
           newH = h.replace(":", "");
           FileWriter fw = new FileWriter(newH);
           fw.write(t);
           fw.close();
-          recipientL.setForeground(new Color(0, 134, 62));
-          recipientL.setText("Saved!");
+          if (isDarkMode) {
+            recipientLabel.setForeground(new Color(0, 190, 80));
+          } else {
+            recipientLabel.setForeground(new Color(0, 134, 62));
+          }
+          recipientLabel.setText("Saved!");
         } catch (IOException ioException) {
           ioException.printStackTrace();
         }
         return;
+      } else if (r.length() < 7 || !r.contains("@")) {
+        error("Check recipient!");
+        return;
       }
 
-      recipientL.setForeground(Color.BLUE);
-      recipientL.setText("Sending...");
+      recipientLabel.setForeground(Color.BLUE);
+      recipientLabel.setText("Sending...");
 
       SwingWorker<?, ?> sw = new SwingWorker<>() {
         @Override
@@ -214,6 +248,11 @@ public class ViewImpl extends JFrame {
       setTitle();
     });
 
+    darkLightMenuItem.addActionListener(e -> {
+      isDarkMode = !isDarkMode;
+      activeColorTheme();
+    });
+
     stopButton.addActionListener(e -> {
       this.isStopped = true;
     });
@@ -240,6 +279,92 @@ public class ViewImpl extends JFrame {
       taskModeMenuAction();
     });
     resetButton.addActionListener(e -> resetFields());
+  }
+
+  private void activeColorTheme() {
+    if (isDarkMode) {
+      darkLightMenuItem.setText("Light mode");
+      bottomPanel.setBackground(Color.BLACK);
+      centerPanel.setBackground(Color.BLACK);
+      frame.setBackground(Color.BLACK);
+      frame.setForeground(appleWhite);
+      topPanel.setBackground(Color.BLACK);
+      textBox.setForeground(Color.white);
+      recipientTextField.setForeground(Color.white);
+      headerTextField.setForeground(Color.white);
+      countTextField.setForeground(Color.white);
+      textBox.setBackground(Color.DARK_GRAY);
+      recipientTextField.setBackground(Color.DARK_GRAY);
+      headerTextField.setBackground(Color.DARK_GRAY);
+      countTextField.setBackground(Color.DARK_GRAY);
+      titledBorder.setTitleColor(appleWhite);
+      headingLabel.setForeground(appleWhite);
+      textBox.setCaretColor(appleWhite);
+      recipientTextField.setCaretColor(appleWhite);
+      headerTextField.setCaretColor(appleWhite);
+      countTextField.setCaretColor(appleWhite);
+      sendButton.setOpaque(true);
+      sendButton.setBorderPainted(false);
+      resetButton.setOpaque(true);
+      resetButton.setBorderPainted(false);
+      stopButton.setOpaque(true);
+      stopButton.setBorderPainted(false);
+      stopButton.setBackground(Color.DARK_GRAY);
+      sendButton.setBackground(Color.DARK_GRAY);
+      resetButton.setBackground(Color.DARK_GRAY);
+      stopButton.setForeground(appleWhite);
+      sendButton.setForeground(appleWhite);
+      resetButton.setForeground(appleWhite);
+      if (recipientLabel.getForeground().equals(new Color(149, 0, 0))) {
+        recipientLabel.setForeground(new Color(245, 50, 50));
+      } else if (recipientLabel.getForeground().equals(new Color(0, 134, 62))) {
+        recipientLabel.setForeground(new Color(0, 190, 80));
+      } else {
+        recipientLabel.setForeground(appleWhite);
+      }
+      pp.put("dark", "true");
+    } else {
+      darkLightMenuItem.setText("Dark mode");
+      frame.setBackground(appleWhite);
+      frame.setForeground(Color.black);
+      bottomPanel.setBackground(appleWhite);
+      centerPanel.setBackground(appleWhite);
+      topPanel.setBackground(appleWhite);
+      textBox.setForeground(Color.black);
+      recipientTextField.setForeground(Color.black);
+      headerTextField.setForeground(Color.black);
+      countTextField.setForeground(Color.black);
+      textBox.setBackground(Color.white);
+      recipientTextField.setBackground(Color.white);
+      headerTextField.setBackground(Color.white);
+      countTextField.setBackground(Color.white);
+      titledBorder.setTitleColor(new Color(64, 64, 64));
+      headingLabel.setForeground(Color.black);
+      textBox.setCaretColor(Color.black);
+      recipientTextField.setCaretColor(Color.black);
+      headerTextField.setCaretColor(Color.black);
+      countTextField.setCaretColor(Color.black);
+      sendButton.setOpaque(false);
+      sendButton.setBorderPainted(true);
+      resetButton.setOpaque(false);
+      resetButton.setBorderPainted(true);
+      stopButton.setOpaque(false);
+      stopButton.setBorderPainted(true);
+      stopButton.setBackground(appleWhite);
+      sendButton.setBackground(appleWhite);
+      resetButton.setBackground(appleWhite);
+      stopButton.setForeground(Color.black);
+      sendButton.setForeground(Color.black);
+      resetButton.setForeground(Color.black);
+      if (recipientLabel.getForeground().equals(new Color(245, 50, 50))) {
+        recipientLabel.setForeground(new Color(149, 0, 0));
+      } else if (recipientLabel.getForeground().equals(new Color(0, 190, 80))) {
+        recipientLabel.setForeground(new Color(0, 134, 62));
+      } else {
+        recipientLabel.setForeground(Color.black);
+      }
+      pp.put("dark", "false");
+    }
   }
 
   /**
@@ -314,7 +439,10 @@ public class ViewImpl extends JFrame {
     KeyListener textInputsKeyListener = new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) {
-        resetLabel();
+        if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
+            .startsWith("Sent")) {
+          resetLabel();
+        }
       }
 
       @Override
@@ -352,9 +480,9 @@ public class ViewImpl extends JFrame {
           String textBoxText = textBox.getText();
           int cp = textBox.getCaretPosition();
           int addAnIndex = 0;
-          if(textBoxText.substring(cp-2, cp).contains("-")) {
-            sb.append(textBoxText, 0, cp-2);
-            addAnIndex= -2;
+          if (textBoxText.substring(cp - 2, cp).contains("-")) {
+            sb.append(textBoxText, 0, cp - 2);
+            addAnIndex = -2;
           } else {
             sb.append(textBoxText, 0, cp).append("-");
             addAnIndex++;
@@ -382,6 +510,30 @@ public class ViewImpl extends JFrame {
       }
     };
 
+    KeyListener recipientSaveOrSend = new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        String s = recipientTextField.getText();
+        String sbt = sendButton.getText();
+        if (s.isBlank() && (e.getKeyChar() == KeyEvent.VK_SPACE
+            || e.getKeyChar() == KeyEvent.VK_BACK_SPACE)) {
+          sendButton.setText("Save");
+        } else if (sbt.indexOf("a") == 1) {
+          sendButton.setText("Send");
+        }
+      }
+
+      @Override
+      public void keyPressed(KeyEvent e) {
+
+      }
+
+      @Override
+      public void keyReleased(KeyEvent e) {
+
+      }
+    };
+
     textBox.addKeyListener(textInputsKeyListener);
     recipientTextField.addKeyListener(textInputsKeyListener);
     headerTextField.addKeyListener(textInputsKeyListener);
@@ -391,6 +543,7 @@ public class ViewImpl extends JFrame {
     headerTextField.addKeyListener(allComponentsKeyListener);
     resetButton.addKeyListener(allComponentsKeyListener);
     sendButton.addKeyListener(allComponentsKeyListener);
+    recipientTextField.addKeyListener(recipientSaveOrSend);
   }
 
   private void indentLine(boolean b) {
@@ -460,7 +613,7 @@ public class ViewImpl extends JFrame {
       newText.append(text, 0, beginningCutOff);
       newText.append(text.substring(beginningCutOff + 1));
       textBox.setText(newText.toString());
-      textBox.setCaretPosition(carrotPositioning -1);
+      textBox.setCaretPosition(carrotPositioning - 1);
     }
 
   }
@@ -471,12 +624,12 @@ public class ViewImpl extends JFrame {
     try {
       times = Integer.parseInt(countTextField.getText());
     } catch (NumberFormatException nfe) {
-      recipientL.setText("Count failed!");
+      recipientLabel.setText("Count failed!");
       return;
     }
     if (times > 1) {
 
-      recipientL.setText("Sent 0/" + times);
+      recipientLabel.setText("Sent 0/" + times);
       for (int i = 1; i <= times; i++) {
         if (isStopped) {
           isStopped = false;
@@ -488,7 +641,7 @@ public class ViewImpl extends JFrame {
         } else {
           JavaMailUtil.sendMail(recipient, htfText, taText);
         }
-        recipientL.setText("Sent " + i + "/" + times);
+        recipientLabel.setText("Sent " + i + "/" + times);
         if (i != times) {
           Thread.sleep(5700);
         }
@@ -498,7 +651,11 @@ public class ViewImpl extends JFrame {
     }
 
     //JavaMailUtil.sendMail("sendreplyza@gmail.com", htfText + " - " + name, taText);
-    recipientL.setForeground(new Color(0, 134, 62));
+    if (isDarkMode) {
+      recipientLabel.setForeground(new Color(0, 190, 80));
+    } else {
+      recipientLabel.setForeground(new Color(0, 134, 62));
+    }
     StringBuilder rsb = new StringBuilder();
     if (times == 1) {
       rsb.append("Sent!");
@@ -508,7 +665,7 @@ public class ViewImpl extends JFrame {
     if (!this.name.isEmpty()) {
       rsb.append(" to ").append(name).append("!");
     }
-    recipientL.setText(rsb.toString());
+    recipientLabel.setText(rsb.toString());
   }
 
   /**
@@ -541,22 +698,29 @@ public class ViewImpl extends JFrame {
   }
 
   private void resetLabel() {
-    recipientL.setForeground(Color.BLACK);
-    if (name.isEmpty()) {
-      recipientL.setText("Enter recipient:");
+    if (isDarkMode) {
+      recipientLabel.setForeground(appleWhite);
     } else {
-      recipientL.setText("Send to " + name);
+      recipientLabel.setForeground(Color.BLACK);
+    }
+    if (name.isEmpty()) {
+      recipientLabel.setText("Enter recipient:");
+    } else {
+      recipientLabel.setText("Send to " + name);
     }
   }
 
   private void error() {
-    recipientL.setText("Failed!");
-    recipientL.setForeground(new Color(149, 0, 0));
+    error("Failed!");
   }
 
   private void error(String s) {
-    recipientL.setText(s);
-    recipientL.setForeground(new Color(149, 0, 0));
+    recipientLabel.setText(s);
+    if (isDarkMode) {
+      recipientLabel.setForeground(new Color(245, 50, 50));
+    } else {
+      recipientLabel.setForeground(new Color(149, 0, 0));
+    }
   }
 
 }
