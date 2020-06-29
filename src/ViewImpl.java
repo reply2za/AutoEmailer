@@ -101,6 +101,8 @@ public class ViewImpl extends JFrame {
     emailAnyone = true;
     taskModeMenuItem.setAccelerator(KeyStroke
         .getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+    emailToMenuItem.setAccelerator(KeyStroke
+        .getKeyStroke(KeyEvent.VK_E, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
 
     stopButton.setVisible(false);
     countTextField.setVisible(false);
@@ -110,7 +112,11 @@ public class ViewImpl extends JFrame {
     headingLabel = new JLabel("Enter heading");
     recipientTextField = new JTextField(16); // accepts upto 10 characters
     headerTextField = new JTextField(20); // accepts upto 10 characters
-    sendButton = new JButton("Save");
+    if (!name.isEmpty()) {
+      sendButton = new JButton("Save");
+    } else {
+      sendButton = new JButton("Send");
+    }
     resetButton = new JButton("Reset");
     recipientLabel = new JLabel();
 
@@ -240,9 +246,11 @@ public class ViewImpl extends JFrame {
       if (emailAnyone) {
         emailToMenuItem.setText("Email me");
         name = "";
+        sendButton.setText("Save");
       } else {
         emailToMenuItem.setText("Email anyone");
         name = "Zain";
+        sendButton.setText("Send");
       }
       updateRecipientComponents();
       setTitle();
@@ -521,6 +529,7 @@ public class ViewImpl extends JFrame {
         } else if (sbt.indexOf("a") == 1) {
           sendButton.setText("Send");
         }
+
       }
 
       @Override
@@ -658,12 +667,14 @@ public class ViewImpl extends JFrame {
     }
     StringBuilder rsb = new StringBuilder();
     if (times == 1) {
-      rsb.append("Sent!");
+      rsb.append("Sent");
     } else {
-      rsb.append("Sent! (").append(times).append(")");
+      rsb.append("Sent (").append(times).append(")");
     }
     if (!this.name.isEmpty()) {
       rsb.append(" to ").append(name).append("!");
+    } else {
+      rsb.append("!");
     }
     recipientLabel.setText(rsb.toString());
   }
