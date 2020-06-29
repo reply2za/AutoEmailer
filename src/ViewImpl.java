@@ -1,6 +1,7 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.FileWriter;
@@ -21,6 +22,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
 import javax.swing.border.TitledBorder;
 
@@ -41,7 +43,7 @@ public class ViewImpl extends JFrame {
   private boolean showCounter;
   private boolean emailAnyone;
   JMenuItem counterMenuItem;
-  JMenuItem taskModeMenu;
+  JMenuItem taskModeMenuItem;
   JMenuItem emailToMenuItem;
 
   ViewImpl() {
@@ -57,6 +59,7 @@ public class ViewImpl extends JFrame {
     frame = new JFrame(name.concat(" Auto Emailer"));
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
     frame.setSize(480, 390);
+    frame.setLocationRelativeTo(null);
 
     countTextField = new JTextField();
     countTextField.setText("1");
@@ -78,14 +81,16 @@ public class ViewImpl extends JFrame {
     JMenuItem m12 = new JMenuItem("Save as");
     emailToMenuItem = new JMenuItem("Email me");
     counterMenuItem = new JMenuItem("Show counter");
-    taskModeMenu = new JMenuItem("Enable task mode");
+    taskModeMenuItem = new JMenuItem("Enable task mode");
     fileMenu.add(m11);
     fileMenu.add(m12);
     advancedMenu.add(counterMenuItem);
     advancedMenu.add(emailToMenuItem);
-    advancedMenu.add(taskModeMenu);
+    advancedMenu.add(taskModeMenuItem);
     showCounter = false;
     emailAnyone = true;
+    taskModeMenuItem.setAccelerator(KeyStroke
+        .getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
 
     stopButton.setVisible(false);
     countTextField.setVisible(false);
@@ -144,14 +149,12 @@ public class ViewImpl extends JFrame {
       recipientL.setText("Enter recipient:");
       recipientTextField.setText("");
       recipientTextField.setVisible(true);
-      frame.setName(name.concat(" Auto Emailer"));
-
     } else {
       recipientL.setText("Send to ".concat(name).concat(":"));
       recipientTextField.setText(personToEmailD(name));
       recipientTextField.setVisible(false);
-      frame.setName(name.concat(" Auto Emailer"));
     }
+    //frame.setName(" Auto Emailer");
   }
 
 
@@ -203,14 +206,12 @@ public class ViewImpl extends JFrame {
       if (emailAnyone) {
         emailToMenuItem.setText("Email me");
         name = "";
-        updateRecipientComponents();
-        frame.setTitle(" Auto Emailer");
       } else {
         emailToMenuItem.setText("Email anyone");
         name = "Zain";
-        updateRecipientComponents();
-        frame.setTitle("Email Myself");
       }
+      updateRecipientComponents();
+      setTitle();
     });
 
     stopButton.addActionListener(e -> {
@@ -234,38 +235,64 @@ public class ViewImpl extends JFrame {
       }
     });
 
-    taskModeMenu.addActionListener(e -> {
+    taskModeMenuItem.addActionListener(e -> {
       taskMode = !taskMode;
-
-      Date time = new Date();
-      SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
-
-      if (taskMode) {
-        taskModeMenu.setText("Disable Task Mode");
-        if (textBox.getText().isEmpty()) {
-          textBox.append("-");
-        }
-        if (headerTextField.getText().isBlank()) {
-          headerTextField.setText(sdf.format(time) + "'s Plan: ");
-        }
-      } else {
-        taskModeMenu.setText("Enable Task Mode");
-        if (textBox.getText().equals("-")) {
-          textBox.setText("");
-        }
-      }
+      taskModeMenuAction();
     });
-
     resetButton.addActionListener(e -> resetFields());
+  }
+
+  /**
+   * Task mode action.
+   */
+  private void taskModeMenuAction() {
+    Date time = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
+    String generatedHeader = sdf.format(time) + "'s Plan: ";
+    if (taskMode) {
+      taskModeMenuItem.setText("Disable Task Mode");
+      if (textBox.getText().isEmpty()) {
+        textBox.append("-");
+      }
+      if (headerTextField.getText().isBlank()) {
+        headerTextField.setText(generatedHeader);
+      }
+    } else {
+      taskModeMenuItem.setText("Enable Task Mode");
+      if (textBox.getText().equals("-")) {
+        textBox.setText("");
+      }
+      if (headerTextField.getText().equals(generatedHeader)) {
+        headerTextField.setText("");
+      }
+    }
+    setTitle();
+  }
+
+  /**
+   * Sets the title depending on the application's settings.
+   */
+  private void setTitle() {
+    StringBuilder sb = new StringBuilder();
+    if (emailAnyone) {
+      sb.append("Auto Emailer");
+    } else {
+      sb.append("Auto Email Me");
+    }
+    if (taskMode) {
+      sb.append(" - task mode");
+    }
+    frame.setTitle(sb.toString());
   }
 
   /**
    * Initializes all of the key listeners
    */
   private void initializeKeyListeners() {
-    final Set<Integer> pressedKeys = new HashSet<>();
 
-    KeyListener quit = new KeyListener() {
+    KeyListener allComponentsKeyListener = new KeyListener() {
+      final Set<Integer> pressedKeys = new HashSet<>();
+
       @Override
       public void keyTyped(KeyEvent e) {
 
@@ -274,7 +301,6 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyPressed(KeyEvent e) {
         pressedKeys.add(e.getKeyCode());
-
         if (pressedKeys.size() < 3 && pressedKeys.contains(157) && pressedKeys.contains(87)) {
           System.exit(0);
         }
@@ -285,8 +311,7 @@ public class ViewImpl extends JFrame {
         pressedKeys.remove(e.getKeyCode());
       }
     };
-
-    KeyListener resetOnType = new KeyListener() {
+    KeyListener textInputsKeyListener = new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) {
         resetLabel();
@@ -294,7 +319,9 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyPressed(KeyEvent e) {
-        //left blank
+        if (headerTextField.hasFocus() && e.getKeyCode() == KeyEvent.VK_ENTER) {
+          textBox.grabFocus();
+        }
       }
 
       @Override
@@ -304,42 +331,106 @@ public class ViewImpl extends JFrame {
     };
 
     KeyListener textBoxKeySpecialities = new KeyListener() {
+      final Set<Integer> pressedKeys = new HashSet<>();
+
       @Override
       public void keyTyped(KeyEvent e) {
-        // if pressing tab
-        if (e.getKeyChar() == (KeyEvent.VK_TAB)) {
+        if (e.getKeyChar() == (KeyEvent.VK_TAB) && !pressedKeys.contains(KeyEvent.VK_SHIFT)) {
           if (taskMode) {
-            // code to remove a tab from the middle of text
-            String oTextBoxText = textBox.getText();
-            String text;
-            int carrotPositioning = textBox.getCaretPosition();
-            //removing the inputted 'tab'
-            if (oTextBoxText.length() == textBox.getCaretPosition()) {
-              textBox.setText(oTextBoxText.substring(0, oTextBoxText.length() - 1));
-              text = textBox.getText();
+            indentLine(true);
+          } else if (textBox.getCaretPosition() == textBox.getText().length()) {
+            textBox.setText(textBox.getText().substring(0, textBox.getText().length() - 1));
+            if (recipientTextField.getText().isBlank()) {
+              recipientTextField.grabFocus();
+
             } else {
-              text = oTextBoxText.substring(0, textBox.getCaretPosition() - 1)
-                  + oTextBoxText.substring(textBox.getCaretPosition());
+              sendButton.grabFocus();
             }
+          }
+        } else if (taskMode && e.getKeyChar() == KeyEvent.VK_ENTER) {
+          StringBuilder sb = new StringBuilder();
+          String textBoxText = textBox.getText();
+          int cp = textBox.getCaretPosition();
+          int addAnIndex = 0;
+          if(textBoxText.substring(cp-2, cp).contains("-")) {
+            sb.append(textBoxText, 0, cp-2);
+            addAnIndex= -2;
+          } else {
+            sb.append(textBoxText, 0, cp).append("-");
+            addAnIndex++;
+          }
+          sb.append(textBoxText.substring(cp));
+          textBox.setText(sb.toString());
+          textBox.setCaretPosition(cp + addAnIndex);
+        }
 
-            String[] textArray = text.split("\n");
-            if (textArray.length == 0) {
-              return;
-            }
-            int totalSoFar = 0;
-            int arrayIndex = 0;
-            int carrotToEnd = 0;
-            for (String s : textArray) {
-              totalSoFar += s.length() + 1;
-              if (textBox.getCaretPosition() <= totalSoFar) {
-                //carrotToEnd = totalSoFar - textBox.getCaretPosition();
-                break;
-              }
-              arrayIndex++;
-            }
+      }
 
-            StringBuilder newText = new StringBuilder();
-            int moveCursorBack = 0;
+      @Override
+      public void keyPressed(KeyEvent e) {
+        pressedKeys.add(e.getKeyCode());
+        // if pressing tab
+        if (pressedKeys.size() < 3 && pressedKeys.contains(KeyEvent.VK_SHIFT) && pressedKeys
+            .contains(KeyEvent.VK_TAB)) {
+          indentLine(false);
+        }
+      }
+
+      @Override
+      public void keyReleased(KeyEvent e) {
+        pressedKeys.remove(e.getKeyCode());
+      }
+    };
+
+    textBox.addKeyListener(textInputsKeyListener);
+    recipientTextField.addKeyListener(textInputsKeyListener);
+    headerTextField.addKeyListener(textInputsKeyListener);
+    textBox.addKeyListener(textBoxKeySpecialities);
+    textBox.addKeyListener(allComponentsKeyListener);
+    recipientTextField.addKeyListener(allComponentsKeyListener);
+    headerTextField.addKeyListener(allComponentsKeyListener);
+    resetButton.addKeyListener(allComponentsKeyListener);
+    sendButton.addKeyListener(allComponentsKeyListener);
+  }
+
+  private void indentLine(boolean b) {
+    // code to remove a tab from the middle of text
+    String oldTextBoxText = textBox.getText();
+    String text;
+    int carrotPositioning = textBox.getCaretPosition();
+    if (oldTextBoxText.length() == 0) {
+      return;
+    }
+    if (b) {
+      //removing the inputted 'tab'
+      if (oldTextBoxText.length() == carrotPositioning) {
+        textBox.setText(oldTextBoxText.substring(0, oldTextBoxText.length() - 1));
+        text = textBox.getText();
+      } else {
+        text = oldTextBoxText.substring(0, carrotPositioning - 1)
+            + oldTextBoxText.substring(carrotPositioning);
+      }
+    } else {
+      text = textBox.getText();
+    }
+    String[] textArray = text.split("\n");
+    if (textArray.length == 0) {
+      return;
+    }
+    int totalSoFar = 0;
+    int arrayIndex = 0;
+    //int carrotToEnd = 0;
+    for (String s : textArray) {
+      totalSoFar += s.length() + 1;
+      if (textBox.getCaretPosition() <= totalSoFar) {
+        //carrotToEnd = totalSoFar - textBox.getCaretPosition();
+        break;
+      }
+      arrayIndex++;
+    }
+
+    StringBuilder newText = new StringBuilder();
+    int moveCursorBack = 0;
 
 /*            if(text.length() > textBox.getColumns()) {
               StringBuilder newString = new StringBuilder();
@@ -353,57 +444,25 @@ public class ViewImpl extends JFrame {
               text = newString.toString();
             }*/
 
-            if (arrayIndex < textArray.length) {
-              moveCursorBack += (textArray[arrayIndex].length() + 1);
-            } else {
-              moveCursorBack++;
-            }
-            int beginningCutOff = totalSoFar - moveCursorBack;
+    if (arrayIndex < textArray.length) {
+      moveCursorBack += (textArray[arrayIndex].length() + 1);
+    } else {
+      moveCursorBack++;
+    }
+    int beginningCutOff = totalSoFar - moveCursorBack;
+    if (b) {
+      newText.append(text, 0, beginningCutOff);
+      newText.append("\t");
+      newText.append(text.substring(beginningCutOff));
+      textBox.setText(newText.toString());
+      textBox.setCaretPosition(carrotPositioning);
+    } else {
+      newText.append(text, 0, beginningCutOff);
+      newText.append(text.substring(beginningCutOff + 1));
+      textBox.setText(newText.toString());
+      textBox.setCaretPosition(carrotPositioning -1);
+    }
 
-            newText.append(text, 0, beginningCutOff);
-            newText.append("\t");
-            newText.append(text.substring(beginningCutOff));
-            textBox.setText(newText.toString());
-            textBox.setCaretPosition(carrotPositioning);
-          } else if (textBox.getCaretPosition() == textBox.getText().length()) {
-            textBox.setText(textBox.getText().substring(0, textBox.getText().length() - 1));
-            if (recipientTextField.getText().isBlank()) {
-              recipientTextField.grabFocus();
-            } else {
-              sendButton.grabFocus();
-            }
-          }
-        } else if (taskMode && e.getKeyChar() == KeyEvent.VK_ENTER) {
-          StringBuilder sb = new StringBuilder();
-          String textBoxText = textBox.getText();
-          int cp = textBox.getCaretPosition();
-          sb.append(textBoxText, 0, cp).append("-");
-          sb.append(textBoxText.substring(cp));
-          textBox.setText(sb.toString());
-          textBox.setCaretPosition(cp + 1);
-        }
-      }
-
-      @Override
-      public void keyPressed(KeyEvent e) {
-        //left blank
-      }
-
-      @Override
-      public void keyReleased(KeyEvent e) {
-        //left blank
-      }
-    };
-
-    textBox.addKeyListener(resetOnType);
-    recipientTextField.addKeyListener(resetOnType);
-    headerTextField.addKeyListener(resetOnType);
-    textBox.addKeyListener(quit);
-    textBox.addKeyListener(textBoxKeySpecialities);
-    recipientTextField.addKeyListener(quit);
-    headerTextField.addKeyListener(quit);
-    resetButton.addKeyListener(quit);
-    sendButton.addKeyListener(quit);
   }
 
 
@@ -478,6 +537,7 @@ public class ViewImpl extends JFrame {
     recipientTextField.setText("");
     headerTextField.setText("");
     textBox.setText("");
+    taskModeMenuAction();
   }
 
   private void resetLabel() {
