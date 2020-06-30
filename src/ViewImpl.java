@@ -61,7 +61,7 @@ public class ViewImpl extends JFrame {
   private final JMenuItem resetMenuItem;
   private final JMenuItem undoMenuItem;
   private final JMenuItem redoMenuItem;
-  private LinkedList<String> undoLinkedList;
+  private final LinkedList<String> undoLinkedList;
   int currentUndoIndex;
 
   ViewImpl() {
@@ -184,8 +184,8 @@ public class ViewImpl extends JFrame {
       isDarkMode = false;
     } else {
       isDarkMode = true;
-      activeColorTheme();
     }
+    activeColorTheme();
     String ppTextBoxString = pp.get("textbox", "empty");
     if (!ppTextBoxString.equals("empty")) {
       textBox.setText(ppTextBoxString);
@@ -244,6 +244,8 @@ public class ViewImpl extends JFrame {
       public void mousePressed(MouseEvent e) {
         if (isDarkMode) {
           myButton.setBackground(new Color(11, 0, 168));
+        } else {
+          myButton.setBackground(new Color(20, 100, 210));
         }
       }
 
@@ -252,18 +254,26 @@ public class ViewImpl extends JFrame {
         if (isDarkMode) {
           myButton.setBackground(Color.darkGray);
         } else {
-          myButton.setBackground(appleWhite);
+          myButton.setBackground(new Color(250,250,250));
         }
       }
 
       @Override
       public void mouseEntered(MouseEvent e) {
-        myButton.setBackground(Color.GRAY);
+        if (isDarkMode) {
+          myButton.setBackground(Color.GRAY);
+        } else {
+          myButton.setBackground(Color.lightGray);
+        }
       }
 
       @Override
       public void mouseExited(MouseEvent e) {
-        myButton.setBackground(Color.DARK_GRAY);
+        if (isDarkMode) {
+          myButton.setBackground(Color.DARK_GRAY);
+        } else {
+          myButton.setBackground(new Color(250,250,250));
+        }
       }
     };
   }
@@ -337,9 +347,7 @@ public class ViewImpl extends JFrame {
       activeColorTheme();
     });
 
-    resetMenuItem.addActionListener(e -> {
-      resetFields();
-    });
+    resetMenuItem.addActionListener(e -> resetFields());
 
     stopButton.addActionListener(e -> {
       this.isStopped = true;
@@ -412,6 +420,14 @@ public class ViewImpl extends JFrame {
   }
 
   private void activeColorTheme() {
+    // removes the preset button paint
+    sendButton.setOpaque(true);
+    sendButton.setBorderPainted(false);
+    resetButton.setOpaque(true);
+    resetButton.setBorderPainted(false);
+    stopButton.setOpaque(true);
+    stopButton.setBorderPainted(false);
+
     if (isDarkMode) {
       darkLightMenuItem.setText("Light mode");
       bottomPanel.setBackground(Color.BLACK);
@@ -433,12 +449,6 @@ public class ViewImpl extends JFrame {
       recipientTextField.setCaretColor(appleWhite);
       headerTextField.setCaretColor(appleWhite);
       countTextField.setCaretColor(appleWhite);
-      sendButton.setOpaque(true);
-      sendButton.setBorderPainted(false);
-      resetButton.setOpaque(true);
-      resetButton.setBorderPainted(false);
-      stopButton.setOpaque(true);
-      stopButton.setBorderPainted(false);
       stopButton.setBackground(Color.DARK_GRAY);
       sendButton.setBackground(Color.DARK_GRAY);
       resetButton.setBackground(Color.DARK_GRAY);
@@ -475,15 +485,9 @@ public class ViewImpl extends JFrame {
       recipientTextField.setCaretColor(Color.black);
       headerTextField.setCaretColor(Color.black);
       countTextField.setCaretColor(Color.black);
-      sendButton.setOpaque(false);
-      sendButton.setBorderPainted(true);
-      resetButton.setOpaque(false);
-      resetButton.setBorderPainted(true);
-      stopButton.setOpaque(false);
-      stopButton.setBorderPainted(true);
-      stopButton.setBackground(appleWhite);
-      sendButton.setBackground(appleWhite);
-      resetButton.setBackground(appleWhite);
+      stopButton.setBackground(new Color(250,250,250));
+      sendButton.setBackground(new Color(250,250,250));
+      resetButton.setBackground(new Color(250,250,250));
       stopButton.setForeground(Color.black);
       sendButton.setForeground(Color.black);
       resetButton.setForeground(Color.black);
