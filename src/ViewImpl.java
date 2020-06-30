@@ -4,11 +4,14 @@ import java.awt.FlowLayout;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Set;
 import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
@@ -54,7 +57,12 @@ public class ViewImpl extends JFrame {
   private final Preferences pp;
   private final TitledBorder titledBorder;
   private final JLabel headingLabel;
-  private Color appleWhite;
+  private final Color appleWhite;
+  private final JMenuItem resetMenuItem;
+  private final JMenuItem undoMenuItem;
+  private final JMenuItem redoMenuItem;
+  private LinkedList<String> undoLinkedList;
+  int currentUndoIndex;
 
   ViewImpl() {
     if (System.getProperty("os.name").contains("Mac")) {
@@ -63,6 +71,7 @@ public class ViewImpl extends JFrame {
           "com.apple.mrj.application.apple.menu.about.name", "Stack");
 
     }
+
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
 
@@ -78,6 +87,8 @@ public class ViewImpl extends JFrame {
     this.isStopped = false;
 
     taskMode = false;
+    undoLinkedList = new LinkedList<>();
+    currentUndoIndex = 0;
 
     //Creating the MenuBar and adding components
     JMenuBar mb = new JMenuBar();
@@ -92,8 +103,14 @@ public class ViewImpl extends JFrame {
     emailToMenuItem = new JMenuItem("Email me");
     counterMenuItem = new JMenuItem("Show counter");
     taskModeMenuItem = new JMenuItem("Enable task mode");
+    resetMenuItem = new JMenuItem("Reset");
+    undoMenuItem = new JMenuItem("Undo");
+    redoMenuItem = new JMenuItem("Redo");
     fileMenu.add(m11);
     fileMenu.add(m12);
+    frame.add(resetMenuItem);
+    frame.add(undoMenuItem);
+    frame.add(redoMenuItem);
     advancedMenu.add(counterMenuItem);
     advancedMenu.add(emailToMenuItem);
     advancedMenu.add(taskModeMenuItem);
@@ -103,6 +120,12 @@ public class ViewImpl extends JFrame {
         .getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
     emailToMenuItem.setAccelerator(KeyStroke
         .getKeyStroke(KeyEvent.VK_E, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+    resetMenuItem.setAccelerator(KeyStroke
+        .getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+    undoMenuItem.setAccelerator(KeyStroke
+        .getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+    redoMenuItem.setAccelerator(KeyStroke
+        .getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
 
     stopButton.setVisible(false);
     countTextField.setVisible(false);
@@ -118,6 +141,10 @@ public class ViewImpl extends JFrame {
       sendButton = new JButton("Send");
     }
     resetButton = new JButton("Reset");
+
+    sendButton.setBackground(new Color(255, 255, 255));
+    resetButton.setBackground(new Color(238, 238, 238));
+    stopButton.setBackground(Color.white);
     recipientLabel = new JLabel();
 
     // Text Area at the Center
@@ -152,7 +179,6 @@ public class ViewImpl extends JFrame {
     darkLightMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D,
         Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
     advancedMenu.add(darkLightMenuItem);
-    System.out.println(titledBorder.getTitleColor());
     pp = ProgramPreferences.userRoot().node("prefs");
     if (pp.get("dark", "false").equals("false")) {
       isDarkMode = false;
@@ -160,9 +186,19 @@ public class ViewImpl extends JFrame {
       isDarkMode = true;
       activeColorTheme();
     }
+    String ppTextBoxString = pp.get("textbox", "empty");
+    if (!ppTextBoxString.equals("empty")) {
+      textBox.setText(ppTextBoxString);
+    }
+    String ppHeaderBoxString = pp.get("headerbox", "empty");
+    if (!ppTextBoxString.equals("empty")) {
+      headerTextField.setText(ppHeaderBoxString);
+    }
+    updateUndoTextBox();
 
     initializeActionListeners();
     initializeKeyListeners();
+    initializeMouseListeners();
 
     //Adding Components to the frame.
     frame.getContentPane().add(BorderLayout.SOUTH, bottomPanel);
@@ -191,6 +227,46 @@ public class ViewImpl extends JFrame {
     //frame.setName(" Auto Emailer");
   }
 
+  private void initializeMouseListeners() {
+    sendButton.addMouseListener(applyDarkThemeMouseListenerOnButton(sendButton));
+    resetButton.addMouseListener(applyDarkThemeMouseListenerOnButton(resetButton));
+    stopButton.addMouseListener(applyDarkThemeMouseListenerOnButton(stopButton));
+  }
+
+  private MouseListener applyDarkThemeMouseListenerOnButton(JButton myButton) {
+    return new MouseListener() {
+      @Override
+      public void mouseClicked(MouseEvent e) {
+
+      }
+
+      @Override
+      public void mousePressed(MouseEvent e) {
+        if (isDarkMode) {
+          myButton.setBackground(new Color(11, 0, 168));
+        }
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (isDarkMode) {
+          myButton.setBackground(Color.darkGray);
+        } else {
+          myButton.setBackground(appleWhite);
+        }
+      }
+
+      @Override
+      public void mouseEntered(MouseEvent e) {
+        myButton.setBackground(Color.GRAY);
+      }
+
+      @Override
+      public void mouseExited(MouseEvent e) {
+        myButton.setBackground(Color.DARK_GRAY);
+      }
+    };
+  }
 
   private void initializeActionListeners() {
     sendButton.addActionListener(e -> {
@@ -261,6 +337,10 @@ public class ViewImpl extends JFrame {
       activeColorTheme();
     });
 
+    resetMenuItem.addActionListener(e -> {
+      resetFields();
+    });
+
     stopButton.addActionListener(e -> {
       this.isStopped = true;
     });
@@ -282,11 +362,53 @@ public class ViewImpl extends JFrame {
       }
     });
 
+    undoMenuItem.addActionListener(e -> undoActionOnTextBox());
+    redoMenuItem.addActionListener(e -> redoActionOnTextBox());
+
     taskModeMenuItem.addActionListener(e -> {
       taskMode = !taskMode;
       taskModeMenuAction();
     });
     resetButton.addActionListener(e -> resetFields());
+  }
+
+  /**
+   * The action for when calling undo.
+   */
+  private void undoActionOnTextBox() {
+    if (currentUndoIndex < undoLinkedList.size()) {
+      textBox.setText(undoLinkedList.get(currentUndoIndex));
+      currentUndoIndex++;
+    }
+  }
+
+  /**
+   * Saves the current state into the undo system when this method is called.
+   */
+  private void updateUndoTextBox() {
+    undoLinkedList.push(textBox.getText());
+  }
+
+  /**
+   * The action when calling a redo. Should restore the previous text version.
+   */
+  private void redoActionOnTextBox() {
+    if (currentUndoIndex > 0) {
+      currentUndoIndex--;
+      textBox.setText(undoLinkedList.get(currentUndoIndex));
+    }
+  }
+
+  /**
+   * Clears the 'old' redo data as there is new data being written. Assumes that the
+   * currentUndoIndex is not 0.
+   */
+  private void updateRedoTextBox() {
+    while (currentUndoIndex > 0) {
+      undoLinkedList.pop();
+      currentUndoIndex--;
+    }
+
   }
 
   private void activeColorTheme() {
@@ -320,6 +442,7 @@ public class ViewImpl extends JFrame {
       stopButton.setBackground(Color.DARK_GRAY);
       sendButton.setBackground(Color.DARK_GRAY);
       resetButton.setBackground(Color.DARK_GRAY);
+      sendButton.setRolloverEnabled(true);
       stopButton.setForeground(appleWhite);
       sendButton.setForeground(appleWhite);
       resetButton.setForeground(appleWhite);
@@ -428,7 +551,8 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyTyped(KeyEvent e) {
-
+        pp.put("textbox", textBox.getText());
+        pp.put("headerbox", headerTextField.getText());
       }
 
       @Override
@@ -444,12 +568,17 @@ public class ViewImpl extends JFrame {
         pressedKeys.remove(e.getKeyCode());
       }
     };
-    KeyListener textInputsKeyListener = new KeyListener() {
+    KeyListener anyTextFieldsInputsKeyListener = new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) {
         if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
             .startsWith("Sent")) {
           resetLabel();
+        }
+        if (e.getKeyChar() == KeyEvent.VK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB
+            || e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
+          updateUndoTextBox();
+          updateRedoTextBox();
         }
       }
 
@@ -466,7 +595,7 @@ public class ViewImpl extends JFrame {
       }
     };
 
-    KeyListener textBoxKeySpecialities = new KeyListener() {
+    KeyListener textBoxKeyListener = new KeyListener() {
       final Set<Integer> pressedKeys = new HashSet<>();
 
       @Override
@@ -498,6 +627,10 @@ public class ViewImpl extends JFrame {
           sb.append(textBoxText.substring(cp));
           textBox.setText(sb.toString());
           textBox.setCaretPosition(cp + addAnIndex);
+        }
+        if (e.getKeyChar() == KeyEvent.VK_SPACE) {
+          updateRedoTextBox();
+          updateUndoTextBox();
         }
 
       }
@@ -543,10 +676,10 @@ public class ViewImpl extends JFrame {
       }
     };
 
-    textBox.addKeyListener(textInputsKeyListener);
-    recipientTextField.addKeyListener(textInputsKeyListener);
-    headerTextField.addKeyListener(textInputsKeyListener);
-    textBox.addKeyListener(textBoxKeySpecialities);
+    textBox.addKeyListener(anyTextFieldsInputsKeyListener);
+    recipientTextField.addKeyListener(anyTextFieldsInputsKeyListener);
+    headerTextField.addKeyListener(anyTextFieldsInputsKeyListener);
+    textBox.addKeyListener(textBoxKeyListener);
     textBox.addKeyListener(allComponentsKeyListener);
     recipientTextField.addKeyListener(allComponentsKeyListener);
     headerTextField.addKeyListener(allComponentsKeyListener);
@@ -706,6 +839,8 @@ public class ViewImpl extends JFrame {
     headerTextField.setText("");
     textBox.setText("");
     taskModeMenuAction();
+    pp.remove("textbox");
+    pp.remove("headerbox");
   }
 
   private void resetLabel() {
