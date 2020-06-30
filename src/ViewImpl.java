@@ -32,39 +32,40 @@ import javax.swing.border.TitledBorder;
 
 public class ViewImpl extends JFrame {
 
-  private final JLabel recipientLabel;
   private String name;
+  private final JFrame frame;
+  private final JLabel recipientLabel;
+  private final JLabel headingLabel;
   private final JTextArea textBox;
+  private final TitledBorder titledBorder;
   private final JTextField recipientTextField;
   private final JTextField headerTextField;
+  private final JTextField countTextField;
   private final JButton sendButton;
   private final JButton resetButton;
   private final JButton stopButton;
-  private final JTextField countTextField;
-  private boolean isStopped;
-  private final JFrame frame;
-  private boolean taskMode;
-  private boolean showCounter;
-  private boolean emailAnyone;
-  JMenuItem counterMenuItem;
-  JMenuItem taskModeMenuItem;
-  JMenuItem emailToMenuItem;
-  JMenuItem darkLightMenuItem;
-  boolean isDarkMode;
+  private final JMenuItem counterMenuItem;
+  private final JMenuItem taskModeMenuItem;
+  private final JMenuItem emailToMenuItem;
+  private final JMenuItem darkLightMenuItem;
   private final JPanel centerPanel;
   private final JPanel bottomPanel;
   private final JPanel topPanel;
-  private final Preferences pp;
-  private final TitledBorder titledBorder;
-  private final JLabel headingLabel;
-  private final Color appleWhite;
   private final JMenuItem resetMenuItem;
   private final JMenuItem undoMenuItem;
   private final JMenuItem redoMenuItem;
+  private final Preferences pp;
+  private final Color appleWhite;
   private final LinkedList<String> undoLinkedList;
-  int currentUndoIndex;
+  private boolean isStopped;
+  private boolean taskMode;
+  private boolean showCounter;
+  private boolean emailAnyone;
+  private boolean isDarkMode;
+  private int currentUndoIndex;
 
   ViewImpl() {
+    //utilizes macOS menu bar for menu items
     if (System.getProperty("os.name").contains("Mac")) {
       System.setProperty("apple.laf.useScreenMenuBar", "true");
       System.setProperty(
@@ -135,11 +136,8 @@ public class ViewImpl extends JFrame {
     headingLabel = new JLabel("Enter heading");
     recipientTextField = new JTextField(16); // accepts upto 10 characters
     headerTextField = new JTextField(20); // accepts upto 10 characters
-    if (!name.isEmpty()) {
-      sendButton = new JButton("Save");
-    } else {
-      sendButton = new JButton("Send");
-    }
+    sendButton = new JButton("Save");
+
     resetButton = new JButton("Reset");
 
     sendButton.setBackground(new Color(255, 255, 255));
@@ -180,11 +178,8 @@ public class ViewImpl extends JFrame {
         Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
     advancedMenu.add(darkLightMenuItem);
     pp = ProgramPreferences.userRoot().node("prefs");
-    if (pp.get("dark", "false").equals("false")) {
-      isDarkMode = false;
-    } else {
-      isDarkMode = true;
-    }
+    isDarkMode = !pp.get("dark", "false").equals("false");
+
     activeColorTheme();
     String ppTextBoxString = pp.get("textbox", "empty");
     if (!ppTextBoxString.equals("empty")) {
@@ -194,6 +189,11 @@ public class ViewImpl extends JFrame {
     if (!ppTextBoxString.equals("empty")) {
       headerTextField.setText(ppHeaderBoxString);
     }
+    String ppRecipientString = pp.get("recipientbox", "");
+    if (!ppRecipientString.isBlank()) {
+      sendButton.setText("Send");
+    }
+
     updateUndoTextBox();
 
     initializeActionListeners();
@@ -254,7 +254,7 @@ public class ViewImpl extends JFrame {
         if (isDarkMode) {
           myButton.setBackground(Color.darkGray);
         } else {
-          myButton.setBackground(new Color(250,250,250));
+          myButton.setBackground(new Color(250, 250, 250));
         }
       }
 
@@ -272,7 +272,7 @@ public class ViewImpl extends JFrame {
         if (isDarkMode) {
           myButton.setBackground(Color.DARK_GRAY);
         } else {
-          myButton.setBackground(new Color(250,250,250));
+          myButton.setBackground(new Color(250, 250, 250));
         }
       }
     };
@@ -370,8 +370,17 @@ public class ViewImpl extends JFrame {
       }
     });
 
-    undoMenuItem.addActionListener(e -> undoActionOnTextBox());
-    redoMenuItem.addActionListener(e -> redoActionOnTextBox());
+    undoMenuItem.addActionListener(e -> {
+      if (textBox.hasFocus()) {
+        undoActionOnTextBox();
+      }
+    });
+
+    redoMenuItem.addActionListener(e -> {
+      if (textBox.hasFocus()) {
+        redoActionOnTextBox();
+      }
+    });
 
     taskModeMenuItem.addActionListener(e -> {
       taskMode = !taskMode;
@@ -485,9 +494,9 @@ public class ViewImpl extends JFrame {
       recipientTextField.setCaretColor(Color.black);
       headerTextField.setCaretColor(Color.black);
       countTextField.setCaretColor(Color.black);
-      stopButton.setBackground(new Color(250,250,250));
-      sendButton.setBackground(new Color(250,250,250));
-      resetButton.setBackground(new Color(250,250,250));
+      stopButton.setBackground(new Color(250, 250, 250));
+      sendButton.setBackground(new Color(250, 250, 250));
+      resetButton.setBackground(new Color(250, 250, 250));
       stopButton.setForeground(Color.black);
       sendButton.setForeground(Color.black);
       resetButton.setForeground(Color.black);
@@ -555,8 +564,7 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyTyped(KeyEvent e) {
-        pp.put("textbox", textBox.getText());
-        pp.put("headerbox", headerTextField.getText());
+
       }
 
       @Override
@@ -572,46 +580,24 @@ public class ViewImpl extends JFrame {
         pressedKeys.remove(e.getKeyCode());
       }
     };
-    KeyListener anyTextFieldsInputsKeyListener = new KeyListener() {
-      @Override
-      public void keyTyped(KeyEvent e) {
-        if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
-            .startsWith("Sent")) {
-          resetLabel();
-        }
-        if (e.getKeyChar() == KeyEvent.VK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB
-            || e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
-          updateUndoTextBox();
-          updateRedoTextBox();
-        }
-      }
-
-      @Override
-      public void keyPressed(KeyEvent e) {
-        if (headerTextField.hasFocus() && e.getKeyCode() == KeyEvent.VK_ENTER) {
-          textBox.grabFocus();
-        }
-      }
-
-      @Override
-      public void keyReleased(KeyEvent e) {
-        //left blank
-      }
-    };
 
     KeyListener textBoxKeyListener = new KeyListener() {
       final Set<Integer> pressedKeys = new HashSet<>();
 
       @Override
       public void keyTyped(KeyEvent e) {
-        if (e.getKeyChar() == (KeyEvent.VK_TAB) && !pressedKeys.contains(KeyEvent.VK_SHIFT)) {
+        if (e.getKeyChar() == KeyEvent.VK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB
+            || e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
+          updateUndoTextBox();
+          updateRedoTextBox();
+        } else if (e.getKeyChar() == (KeyEvent.VK_TAB) && !pressedKeys
+            .contains(KeyEvent.VK_SHIFT)) {
           if (taskMode) {
             indentLine(true);
           } else if (textBox.getCaretPosition() == textBox.getText().length()) {
             textBox.setText(textBox.getText().substring(0, textBox.getText().length() - 1));
             if (recipientTextField.getText().isBlank()) {
               recipientTextField.grabFocus();
-
             } else {
               sendButton.grabFocus();
             }
@@ -632,11 +618,11 @@ public class ViewImpl extends JFrame {
           textBox.setText(sb.toString());
           textBox.setCaretPosition(cp + addAnIndex);
         }
-        if (e.getKeyChar() == KeyEvent.VK_SPACE) {
-          updateRedoTextBox();
-          updateUndoTextBox();
+        pp.put("textbox", textBox.getText());
+        if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
+            .startsWith("Sent")) {
+          resetLabel();
         }
-
       }
 
       @Override
@@ -646,6 +632,9 @@ public class ViewImpl extends JFrame {
         if (pressedKeys.size() < 3 && pressedKeys.contains(KeyEvent.VK_SHIFT) && pressedKeys
             .contains(KeyEvent.VK_TAB)) {
           indentLine(false);
+        } else if (pressedKeys.contains(KeyEvent.VK_META) && pressedKeys.contains(KeyEvent.VK_SHIFT)
+            && pressedKeys.contains(KeyEvent.VK_Z)) {
+          redoActionOnTextBox();
         }
       }
 
@@ -655,7 +644,7 @@ public class ViewImpl extends JFrame {
       }
     };
 
-    KeyListener recipientSaveOrSend = new KeyListener() {
+    KeyListener recipientKeyListener = new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) {
         String s = recipientTextField.getText();
@@ -666,7 +655,7 @@ public class ViewImpl extends JFrame {
         } else if (sbt.indexOf("a") == 1) {
           sendButton.setText("Send");
         }
-
+        pp.put("recipientbox", recipientTextField.getText());
       }
 
       @Override
@@ -680,16 +669,38 @@ public class ViewImpl extends JFrame {
       }
     };
 
-    textBox.addKeyListener(anyTextFieldsInputsKeyListener);
-    recipientTextField.addKeyListener(anyTextFieldsInputsKeyListener);
-    headerTextField.addKeyListener(anyTextFieldsInputsKeyListener);
-    textBox.addKeyListener(textBoxKeyListener);
-    textBox.addKeyListener(allComponentsKeyListener);
-    recipientTextField.addKeyListener(allComponentsKeyListener);
+    KeyListener headerTextFieldKeyListener = new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        pp.put("headerbox", headerTextField.getText());
+        if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
+            .startsWith("Sent")) {
+          resetLabel();
+        }
+        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+          textBox.grabFocus();
+        }
+      }
+
+      @Override
+      public void keyPressed(KeyEvent e) {
+
+      }
+
+      @Override
+      public void keyReleased(KeyEvent e) {
+
+      }
+    };
+
     headerTextField.addKeyListener(allComponentsKeyListener);
-    resetButton.addKeyListener(allComponentsKeyListener);
+    headerTextField.addKeyListener(headerTextFieldKeyListener);
+    textBox.addKeyListener(allComponentsKeyListener);
+    textBox.addKeyListener(textBoxKeyListener);
+    recipientTextField.addKeyListener(allComponentsKeyListener);
+    recipientTextField.addKeyListener(recipientKeyListener);
     sendButton.addKeyListener(allComponentsKeyListener);
-    recipientTextField.addKeyListener(recipientSaveOrSend);
+    resetButton.addKeyListener(allComponentsKeyListener);
   }
 
   private void indentLine(boolean b) {
