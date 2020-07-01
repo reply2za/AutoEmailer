@@ -1,6 +1,7 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -64,12 +65,13 @@ public class ViewImpl extends JFrame {
   private boolean isDarkMode;
   private int currentUndoIndex;
 
-  ViewImpl() {
+  ViewImpl(Image i) {
 
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
+    super.setIconImage(i);
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
     frame.setSize(480, 390);
     frame.setLocationRelativeTo(null);
@@ -89,7 +91,7 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
-    JMenu versionMenu = new JMenu("Version 4.1.5");
+    JMenu versionMenu = new JMenu("Version 4.1.6");
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
