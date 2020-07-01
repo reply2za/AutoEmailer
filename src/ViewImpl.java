@@ -89,7 +89,7 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
-    JMenu versionMenu = new JMenu("Version 4.1.4");
+    JMenu versionMenu = new JMenu("Version 4.1.5");
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
@@ -602,7 +602,7 @@ public class ViewImpl extends JFrame {
           String textBoxText = textBox.getText();
           int cp = textBox.getCaretPosition();
           int addAnIndex = 0;
-          if (textBoxText.substring(cp - 2, cp).contains("-")) {
+          if (!textBoxText.isBlank() && textBoxText.substring(cp - 2, cp).contains("-")) {
             sb.append(textBoxText, 0, cp - 2);
             addAnIndex = -2;
           } else {
@@ -683,12 +683,11 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyTyped(KeyEvent e) {
         pp.put("headerbox", headerTextField.getText());
-        if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
+        if (e.getKeyChar() == KeyEvent.VK_ENTER) {
+          textBox.grabFocus();
+        } else if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
             .startsWith("Sent")) {
           resetLabel();
-        }
-        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-          textBox.grabFocus();
         }
       }
 
