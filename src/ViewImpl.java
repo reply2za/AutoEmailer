@@ -91,7 +91,7 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
-    JMenu versionMenu = new JMenu("Version 4.1.6");
+    JMenu versionMenu = new JMenu("Version 4.1.7");
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
@@ -191,7 +191,7 @@ public class ViewImpl extends JFrame {
       sendButton.setText("Send");
     }
 
-    updateUndoTextBox();
+    addToTheUndoList();
 
     initializeActionListeners();
     initializeKeyListeners();
@@ -390,7 +390,15 @@ public class ViewImpl extends JFrame {
    * The action for when calling undo.
    */
   private void undoActionOnTextBox() {
-    if (currentUndoIndex < undoLinkedList.size()) {
+    if (currentUndoIndex >= undoLinkedList.size()) {
+      return;
+    }
+    if (currentUndoIndex == 0 && !undoLinkedList.get(0).equals(textBox.getText())) {
+      addToTheUndoList();
+      textBox.setText(undoLinkedList.get(currentUndoIndex + 1));
+      currentUndoIndex += 2;
+    }
+    else {
       textBox.setText(undoLinkedList.get(currentUndoIndex));
       currentUndoIndex++;
     }
@@ -399,8 +407,11 @@ public class ViewImpl extends JFrame {
   /**
    * Saves the current state into the undo system when this method is called.
    */
-  private void updateUndoTextBox() {
+  private void addToTheUndoList() {
     undoLinkedList.push(textBox.getText());
+    if(undoLinkedList.size() > 150) {
+      undoLinkedList.removeLast();
+    }
   }
 
   /**
@@ -417,7 +428,7 @@ public class ViewImpl extends JFrame {
    * Clears the 'old' redo data as there is new data being written. Assumes that the
    * currentUndoIndex is not 0.
    */
-  private void updateRedoTextBox() {
+  private void clearOldRedoData() {
     while (currentUndoIndex > 0) {
       undoLinkedList.pop();
       currentUndoIndex--;
@@ -585,8 +596,8 @@ public class ViewImpl extends JFrame {
       public void keyTyped(KeyEvent e) {
         if (e.getKeyChar() == KeyEvent.VK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB
             || e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
-          updateUndoTextBox();
-          updateRedoTextBox();
+          addToTheUndoList();
+          clearOldRedoData();
         } else if (e.getKeyChar() == (KeyEvent.VK_TAB) && !pressedKeys
             .contains(KeyEvent.VK_SHIFT)) {
           if (taskMode) {
