@@ -66,7 +66,6 @@ public class ViewImpl extends JFrame {
 
   ViewImpl() {
 
-
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
 
@@ -90,7 +89,7 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
-    JMenu versionMenu = new JMenu("Version 4.1.3");
+    JMenu versionMenu = new JMenu("Version 4.1.4");
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
@@ -628,11 +627,16 @@ public class ViewImpl extends JFrame {
         if (pressedKeys.size() < 3 && pressedKeys.contains(KeyEvent.VK_SHIFT) && pressedKeys
             .contains(KeyEvent.VK_TAB)) {
           indentLine(false);
-        } else if (pressedKeys.contains(KeyEvent.VK_META) && pressedKeys.contains(KeyEvent.VK_SHIFT)
-            && pressedKeys.contains(KeyEvent.VK_Z)) {
-          redoActionOnTextBox();
+        } else if (pressedKeys.contains(KeyEvent.VK_META) && pressedKeys
+            .contains(KeyEvent.VK_SHIFT)) {
+          if (pressedKeys.contains(KeyEvent.VK_Z)) {
+            redoActionOnTextBox();
+          } else if (pressedKeys.contains(KeyEvent.VK_R)) {
+            textBox.setText("");
+          }
         }
       }
+
 
       @Override
       public void keyReleased(KeyEvent e) {
@@ -641,6 +645,8 @@ public class ViewImpl extends JFrame {
     };
 
     KeyListener recipientKeyListener = new KeyListener() {
+      final Set<Integer> pressedKeys = new HashSet<>();
+
       @Override
       public void keyTyped(KeyEvent e) {
         String s = recipientTextField.getText();
@@ -656,16 +662,24 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyPressed(KeyEvent e) {
-
+        pressedKeys.add(e.getKeyCode());
+        if (pressedKeys.contains(KeyEvent.VK_META) && pressedKeys
+            .contains(KeyEvent.VK_SHIFT)) {
+          if (pressedKeys.contains(KeyEvent.VK_R)) {
+            recipientTextField.setText("");
+          }
+        }
       }
 
       @Override
       public void keyReleased(KeyEvent e) {
-
+        pressedKeys.remove(e.getKeyCode());
       }
     };
 
     KeyListener headerTextFieldKeyListener = new KeyListener() {
+      final Set<Integer> pressedKeys = new HashSet<>();
+
       @Override
       public void keyTyped(KeyEvent e) {
         pp.put("headerbox", headerTextField.getText());
@@ -680,12 +694,18 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyPressed(KeyEvent e) {
-
+        pressedKeys.add(e.getKeyCode());
+        if (pressedKeys.contains(KeyEvent.VK_META) && pressedKeys
+            .contains(KeyEvent.VK_SHIFT)) {
+          if (pressedKeys.contains(KeyEvent.VK_R)) {
+            headerTextField.setText("");
+          }
+        }
       }
 
       @Override
       public void keyReleased(KeyEvent e) {
-
+        pressedKeys.remove(e.getKeyCode());
       }
     };
 
@@ -697,6 +717,7 @@ public class ViewImpl extends JFrame {
     recipientTextField.addKeyListener(recipientKeyListener);
     sendButton.addKeyListener(allComponentsKeyListener);
     resetButton.addKeyListener(allComponentsKeyListener);
+    countTextField.addKeyListener(allComponentsKeyListener);
   }
 
   private void indentLine(boolean b) {
