@@ -65,13 +65,7 @@ public class ViewImpl extends JFrame {
   private int currentUndoIndex;
 
   ViewImpl() {
-    //utilizes macOS menu bar for menu items
-    if (System.getProperty("os.name").contains("Mac")) {
-      System.setProperty("apple.laf.useScreenMenuBar", "true");
-      System.setProperty(
-          "com.apple.mrj.application.apple.menu.about.name", "Stack");
 
-    }
 
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
@@ -96,9 +90,11 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
+    JMenu versionMenu = new JMenu("Version 4.1.3");
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
+    mb.add(versionMenu);
     JMenuItem m11 = new JMenuItem("Open");
     JMenuItem m12 = new JMenuItem("Save as");
     emailToMenuItem = new JMenuItem("Email me");
