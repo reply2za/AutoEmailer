@@ -33,7 +33,6 @@ import javax.swing.border.TitledBorder;
 
 public class ViewImpl extends JFrame {
 
-  private String name;
   private final JFrame frame;
   private final JLabel recipientLabel;
   private final JLabel headingLabel;
@@ -58,6 +57,7 @@ public class ViewImpl extends JFrame {
   private final Preferences pp;
   private final Color appleWhite;
   private final LinkedList<String> undoLinkedList;
+  private String name;
   private boolean isStopped;
   private boolean taskMode;
   private boolean showCounter;
@@ -397,8 +397,7 @@ public class ViewImpl extends JFrame {
       addToTheUndoList();
       textBox.setText(undoLinkedList.get(currentUndoIndex + 1));
       currentUndoIndex += 2;
-    }
-    else {
+    } else {
       textBox.setText(undoLinkedList.get(currentUndoIndex));
       currentUndoIndex++;
     }
@@ -409,7 +408,7 @@ public class ViewImpl extends JFrame {
    */
   private void addToTheUndoList() {
     undoLinkedList.push(textBox.getText());
-    if(undoLinkedList.size() > 150) {
+    if (undoLinkedList.size() > 150) {
       undoLinkedList.removeLast();
     }
   }
