@@ -1,6 +1,7 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
@@ -17,6 +18,7 @@ import java.util.Set;
 import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -54,9 +56,12 @@ public class ViewImpl extends JFrame {
   private final JMenuItem resetMenuItem;
   private final JMenuItem undoMenuItem;
   private final JMenuItem redoMenuItem;
+  private final JMenuItem quitMenuItem;
   private final Preferences pp;
   private final Color appleWhite;
   private final LinkedList<String> undoLinkedList;
+  private final JMenuItem welcomeScreenMenuItem;
+  private final JMenu advancedMenu;
   private String name;
   private boolean isStopped;
   private boolean taskMode;
@@ -64,15 +69,15 @@ public class ViewImpl extends JFrame {
   private boolean emailAnyone;
   private boolean isDarkMode;
   private int currentUndoIndex;
+  private boolean isWelcomeScreenOnStart;
 
   ViewImpl(Image i) {
-
+    super.setIconImage(i);
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
-    String version = "Version 4.1.9";
+    String version = "Version 4.2.0";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
-    super.setIconImage(i);
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
     frame.setSize(480, 390);
     frame.setLocationRelativeTo(null);
@@ -89,7 +94,7 @@ public class ViewImpl extends JFrame {
     //Creating the MenuBar and adding components
     JMenuBar mb = new JMenuBar();
     JMenu fileMenu = new JMenu("File");
-    JMenuItem advancedMenu = new JMenu("Advanced");
+    advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
     JMenu versionMenu = new JMenu(version);
     mb.add(fileMenu);
@@ -104,26 +109,31 @@ public class ViewImpl extends JFrame {
     resetMenuItem = new JMenuItem("Reset");
     undoMenuItem = new JMenuItem("Undo");
     redoMenuItem = new JMenuItem("Redo");
+    quitMenuItem = new JMenuItem("Quit");
+    welcomeScreenMenuItem = new JMenuItem("Disable welcome screen");
     fileMenu.add(m11);
     fileMenu.add(m12);
     frame.add(resetMenuItem);
     frame.add(undoMenuItem);
     frame.add(redoMenuItem);
+    frame.add(quitMenuItem);
     advancedMenu.add(counterMenuItem);
     advancedMenu.add(emailToMenuItem);
     advancedMenu.add(taskModeMenuItem);
     showCounter = false;
     emailAnyone = true;
+    int metaKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
     taskModeMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_T, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        .getKeyStroke(KeyEvent.VK_T, metaKey));
     emailToMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_E, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        .getKeyStroke(KeyEvent.VK_E, metaKey));
     resetMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_R, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        .getKeyStroke(KeyEvent.VK_R, metaKey));
     undoMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        .getKeyStroke(KeyEvent.VK_Z, metaKey));
     redoMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
+        .getKeyStroke(KeyEvent.VK_Y, metaKey));
+    quitMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W, metaKey));
 
     stopButton.setVisible(false);
     countTextField.setVisible(false);
@@ -137,9 +147,9 @@ public class ViewImpl extends JFrame {
 
     resetButton = new JButton("Reset");
 
-    sendButton.setBackground(new Color(255, 255, 255));
-    resetButton.setBackground(new Color(238, 238, 238));
+    sendButton.setBackground(Color.white);
     stopButton.setBackground(Color.white);
+    resetButton.setBackground(new Color(238, 238, 238));
     recipientLabel = new JLabel();
 
     // Text Area at the Center
@@ -168,7 +178,7 @@ public class ViewImpl extends JFrame {
     bottomPanel.add(countTextField);
     bottomPanel.add(stopButton);
 
-    // Set theme - experimental
+    // Set theme
     appleWhite = new Color(238, 238, 238);
     darkLightMenuItem = new JMenuItem("Dark mode");
     darkLightMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D,
@@ -176,8 +186,13 @@ public class ViewImpl extends JFrame {
     advancedMenu.add(darkLightMenuItem);
     pp = ProgramPreferences.userRoot().node("prefs");
     isDarkMode = !pp.get("dark", "false").equals("false");
+    isWelcomeScreenOnStart = pp.get("welcome", "true").equals("true");
 
-    //addToTheUndoList();
+    if (!isWelcomeScreenOnStart) {
+      welcomeScreenMenuItem.setText("Enable welcome screen");
+    }
+    advancedMenu.add(welcomeScreenMenuItem);
+
     activeColorTheme();
     String ppTextBoxString = pp.get("textbox", "");
     if (!ppTextBoxString.equals("")) {
@@ -192,21 +207,148 @@ public class ViewImpl extends JFrame {
       sendButton.setText("Send");
       recipientTextField.setText(ppRecipientString);
     }
-    addToTheUndoList();
 
+    addToTheUndoList();
     initializeActionListeners();
     initializeKeyListeners();
     initializeMouseListeners();
 
+    if (isWelcomeScreenOnStart) {
+      Color exp = new Color(237, 248, 252);
+      JPanel welcomePage = initializeWelcomePage(i, exp);
+      frame.setMaximumSize(welcomePage.getSize());
+      frame.setMinimumSize(welcomePage.getSize());
+      frame.add(welcomePage);
+      bottomPanel.setVisible(false);
+      topPanel.setVisible(false);
+      centerPanel.setVisible(false);
+      advancedMenu.setVisible(false);
+    }
+
     //Adding Components to the frame.
+
     frame.getContentPane().add(BorderLayout.SOUTH, bottomPanel);
     frame.getContentPane().add(BorderLayout.CENTER, centerPanel);
-    frame.setJMenuBar(mb);
     frame.getContentPane().add(BorderLayout.NORTH, topPanel);
+    frame.setJMenuBar(mb);
     frame.setVisible(true);
 
-  } // end constructor ----------------------------
+  } // end constructor -------------------------------------------------------
 
+  /**
+   * The database of people who can be emailed.
+   *
+   * @param s the name of the person
+   * @return the email address
+   */
+  private static String personToEmailD(String s) {
+    if (s.substring(0, 1).equalsIgnoreCase("k")) {
+      return "keith.kondapi@gmail.com";
+    }
+    if (s.substring(0, 1).equalsIgnoreCase("a")) {
+      return "replyali10@gmail.com";
+    }
+    if (s.substring(0, 1).equalsIgnoreCase("z")) {
+      return "reply2zain@gmail.com";
+    } else {
+      throw new IllegalArgumentException("Cannot find person in database.");
+    }
+  }
+
+  private JPanel initializeWelcomePage(Image image, Color exp) {
+    JPanel welcomePage = new JPanel();
+    welcomePage.setSize(480, 390);
+    welcomePage.setLayout(new BoxLayout(welcomePage, BoxLayout.PAGE_AXIS));
+    JLabel welcomeTopLabel = new JLabel("Welcome to the AutoEmailer!");
+    welcomeTopLabel.setFont(new Font("Verdana", Font.BOLD, 18));
+    ImageIcon imageIcon = new ImageIcon(image.getScaledInstance(401, 271, 0));
+    JLabel icon = new JLabel(imageIcon);
+    JLabel devName = new JLabel("Developed by Zain");
+    devName.setFont(new Font("Courier New", Font.ITALIC, 14));
+    JLabel devNameS = new JLabel(" ");
+    JButton continueButton = new JButton("Continue");
+    welcomeTopLabel.setAlignmentX(CENTER_ALIGNMENT);
+    welcomeTopLabel.setAlignmentY(CENTER_ALIGNMENT);
+    icon.setAlignmentX(CENTER_ALIGNMENT);
+    devName.setAlignmentX(CENTER_ALIGNMENT);
+    continueButton.setAlignmentX(CENTER_ALIGNMENT);
+    continueButton.setAlignmentY(BOTTOM_ALIGNMENT);
+    continueButton.setOpaque(true);
+    continueButton.setBorderPainted(false);
+    continueButton.setBackground(exp);
+    continueButton.addMouseListener(new MouseListener() {
+      @Override
+      public void mouseClicked(MouseEvent e) {
+        welcomePage.setVisible(false);
+        topPanel.setVisible(true);
+        bottomPanel.setVisible(true);
+        centerPanel.setVisible(true);
+        frame.setMaximumSize(null);
+        frame.setMinimumSize(null);
+        advancedMenu.setVisible(true);
+      }
+
+      @Override
+      public void mousePressed(MouseEvent e) {
+        continueButton.setBackground(new Color(10, 190, 50));
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+
+      }
+
+      @Override
+      public void mouseEntered(MouseEvent e) {
+        continueButton.setBackground(new Color(230, 255, 242));
+        continueButton.setSize(119, 34);
+        continueButton.setFont(new Font("Lucida Grande", Font.PLAIN, 14));
+        continueButton.setForeground(Color.BLACK);
+        continueButton.setLocation(continueButton.getX() - 9, continueButton.getY() - 2);
+      }
+
+      @Override
+      public void mouseExited(MouseEvent e) {
+        continueButton.setBackground(exp);
+        continueButton.setSize(101, 29);
+        continueButton.setFont(new Font("Lucida Grande", Font.PLAIN, 13));
+        continueButton.setForeground(Color.DARK_GRAY);
+        continueButton.setLocation(continueButton.getX() + 9, continueButton.getY() + 2);
+      }
+    });
+    welcomePage.add(welcomeTopLabel);
+    welcomePage.add(icon);
+    welcomePage.add(devName);
+    welcomePage.add(devNameS);
+    welcomePage.add(continueButton);
+    continueButton.grabFocus();
+    continueButton.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (e.getKeyChar() == KeyEvent.VK_ENTER || e.getKeyChar() == KeyEvent.VK_SPACE) {
+          welcomePage.setVisible(false);
+          topPanel.setVisible(true);
+          bottomPanel.setVisible(true);
+          centerPanel.setVisible(true);
+          frame.setMaximumSize(null);
+          frame.setMinimumSize(null);
+          advancedMenu.setVisible(true);
+        }
+      }
+
+      @Override
+      public void keyPressed(KeyEvent e) {
+
+      }
+
+      @Override
+      public void keyReleased(KeyEvent e) {
+
+      }
+    });
+    welcomePage.setBackground(new Color(199, 238, 255));
+    return welcomePage;
+  }
 
   /**
    * Updates the recipient components.
@@ -235,7 +377,7 @@ public class ViewImpl extends JFrame {
     return new MouseListener() {
       @Override
       public void mouseClicked(MouseEvent e) {
-
+        // left blank
       }
 
       @Override
@@ -290,7 +432,15 @@ public class ViewImpl extends JFrame {
         try {
           String newH;
           newH = h.replace(":", "");
-          FileWriter fw = new FileWriter(newH);
+          /*
+                    JFileChooser fileChooser = new JFileChooser();
+          if (fileChooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getCurrentDirectory();
+            // save to file
+          }
+           */
+
+          FileWriter fw = new FileWriter("/Users/zainaaban/Desktop/" + newH, false);
           fw.write(t);
           fw.close();
           if (isDarkMode) {
@@ -302,27 +452,28 @@ public class ViewImpl extends JFrame {
         } catch (IOException ioException) {
           ioException.printStackTrace();
         }
-        return;
       } else if (r.length() < 7 || !r.contains("@")) {
         error("Check recipient!");
-        return;
-      }
+      } else {
+        recipientLabel.setForeground(Color.BLUE);
+        recipientLabel.setText("Sending...");
 
-      recipientLabel.setForeground(Color.BLUE);
-      recipientLabel.setText("Sending...");
-
-      SwingWorker<?, ?> sw = new SwingWorker<>() {
-        @Override
-        protected Object doInBackground() {
-          try {
-            sendMessage(r, h, t);
-          } catch (Exception exception) {
-            error();
+        SwingWorker<?, ?> sw = new SwingWorker<>() {
+          @Override
+          protected Object doInBackground() {
+            try {
+              sendMessage(r, h, t);
+            } catch (Exception exception) {
+              error();
+            }
+            return null;
           }
-          return null;
-        }
-      };
-      sw.execute();
+        };
+        sw.execute();
+      }
+      pp.remove("headerbox");
+      pp.remove("textbox");
+      pp.remove("recipientbox");
     });
 
     emailToMenuItem.addActionListener(e -> {
@@ -347,8 +498,17 @@ public class ViewImpl extends JFrame {
 
     resetMenuItem.addActionListener(e -> resetFields());
 
-    stopButton.addActionListener(e -> {
-      this.isStopped = true;
+    stopButton.addActionListener(e -> this.isStopped = true);
+
+    welcomeScreenMenuItem.addActionListener(e -> {
+      isWelcomeScreenOnStart = !isWelcomeScreenOnStart;
+      if (isWelcomeScreenOnStart) {
+        welcomeScreenMenuItem.setText("Disable welcome screen");
+        pp.put("welcome", "true");
+      } else {
+        welcomeScreenMenuItem.setText("Enable welcome screen");
+        pp.put("welcome", "false");
+      }
     });
 
     counterMenuItem.addActionListener(e -> {
@@ -379,6 +539,8 @@ public class ViewImpl extends JFrame {
         redoActionOnTextBox();
       }
     });
+
+    quitMenuItem.addActionListener(e -> System.exit(0));
 
     taskModeMenuItem.addActionListener(e -> {
       taskMode = !taskMode;
@@ -447,32 +609,31 @@ public class ViewImpl extends JFrame {
 
     if (isDarkMode) {
       darkLightMenuItem.setText("Light mode");
+      topPanel.setBackground(Color.BLACK);
       bottomPanel.setBackground(Color.BLACK);
       centerPanel.setBackground(Color.BLACK);
       frame.setBackground(Color.BLACK);
       frame.setForeground(appleWhite);
-      topPanel.setBackground(Color.BLACK);
+      headerTextField.setForeground(Color.white);
       textBox.setForeground(Color.white);
       recipientTextField.setForeground(Color.white);
-      headerTextField.setForeground(Color.white);
       countTextField.setForeground(Color.white);
+      headerTextField.setBackground(Color.DARK_GRAY);
       textBox.setBackground(Color.DARK_GRAY);
       recipientTextField.setBackground(Color.DARK_GRAY);
-      headerTextField.setBackground(Color.DARK_GRAY);
       countTextField.setBackground(Color.DARK_GRAY);
-      titledBorder.setTitleColor(appleWhite);
-      headingLabel.setForeground(appleWhite);
+      headerTextField.setCaretColor(appleWhite);
       textBox.setCaretColor(appleWhite);
       recipientTextField.setCaretColor(appleWhite);
-      headerTextField.setCaretColor(appleWhite);
       countTextField.setCaretColor(appleWhite);
       stopButton.setBackground(Color.DARK_GRAY);
       sendButton.setBackground(Color.DARK_GRAY);
       resetButton.setBackground(Color.DARK_GRAY);
-      sendButton.setRolloverEnabled(true);
       stopButton.setForeground(appleWhite);
       sendButton.setForeground(appleWhite);
       resetButton.setForeground(appleWhite);
+      headingLabel.setForeground(appleWhite);
+      titledBorder.setTitleColor(new Color(200, 200, 200));
       if (recipientLabel.getForeground().equals(new Color(149, 0, 0))) {
         recipientLabel.setForeground(new Color(245, 50, 50));
       } else if (recipientLabel.getForeground().equals(new Color(0, 134, 62))) {
@@ -483,31 +644,31 @@ public class ViewImpl extends JFrame {
       pp.put("dark", "true");
     } else {
       darkLightMenuItem.setText("Dark mode");
-      frame.setBackground(appleWhite);
       frame.setForeground(Color.black);
+      frame.setBackground(appleWhite);
+      topPanel.setBackground(appleWhite);
       bottomPanel.setBackground(appleWhite);
       centerPanel.setBackground(appleWhite);
-      topPanel.setBackground(appleWhite);
-      textBox.setForeground(Color.black);
-      recipientTextField.setForeground(Color.black);
       headerTextField.setForeground(Color.black);
-      countTextField.setForeground(Color.black);
-      textBox.setBackground(Color.white);
-      recipientTextField.setBackground(Color.white);
-      headerTextField.setBackground(Color.white);
-      countTextField.setBackground(Color.white);
-      titledBorder.setTitleColor(new Color(64, 64, 64));
-      headingLabel.setForeground(Color.black);
-      textBox.setCaretColor(Color.black);
-      recipientTextField.setCaretColor(Color.black);
       headerTextField.setCaretColor(Color.black);
+      headerTextField.setBackground(Color.white);
+      textBox.setForeground(Color.black);
+      textBox.setCaretColor(Color.black);
+      textBox.setBackground(Color.white);
+      recipientTextField.setForeground(Color.black);
+      recipientTextField.setCaretColor(Color.black);
+      recipientTextField.setBackground(Color.white);
+      countTextField.setForeground(Color.black);
       countTextField.setCaretColor(Color.black);
-      stopButton.setBackground(new Color(250, 250, 250));
+      countTextField.setBackground(Color.white);
+      sendButton.setForeground(Color.black);
       sendButton.setBackground(new Color(250, 250, 250));
+      resetButton.setForeground(Color.black);
       resetButton.setBackground(new Color(250, 250, 250));
       stopButton.setForeground(Color.black);
-      sendButton.setForeground(Color.black);
-      resetButton.setForeground(Color.black);
+      stopButton.setBackground(new Color(250, 250, 250));
+      headingLabel.setForeground(Color.black);
+      titledBorder.setTitleColor(new Color(64, 64, 64));
       if (recipientLabel.getForeground().equals(new Color(245, 50, 50))) {
         recipientLabel.setForeground(new Color(149, 0, 0));
       } else if (recipientLabel.getForeground().equals(new Color(0, 190, 80))) {
@@ -566,28 +727,6 @@ public class ViewImpl extends JFrame {
    * Initializes all of the key listeners
    */
   private void initializeKeyListeners() {
-
-    KeyListener allComponentsKeyListener = new KeyListener() {
-      final Set<Integer> pressedKeys = new HashSet<>();
-
-      @Override
-      public void keyTyped(KeyEvent e) {
-
-      }
-
-      @Override
-      public void keyPressed(KeyEvent e) {
-        pressedKeys.add(e.getKeyCode());
-        if (pressedKeys.size() < 3 && pressedKeys.contains(157) && pressedKeys.contains(87)) {
-          System.exit(0);
-        }
-      }
-
-      @Override
-      public void keyReleased(KeyEvent e) {
-        pressedKeys.remove(e.getKeyCode());
-      }
-    };
 
     KeyListener textBoxKeyListener = new KeyListener() {
       final Set<Integer> pressedKeys = new HashSet<>();
@@ -721,15 +860,9 @@ public class ViewImpl extends JFrame {
       }
     };
 
-    headerTextField.addKeyListener(allComponentsKeyListener);
     headerTextField.addKeyListener(headerTextFieldKeyListener);
-    textBox.addKeyListener(allComponentsKeyListener);
     textBox.addKeyListener(textBoxKeyListener);
-    recipientTextField.addKeyListener(allComponentsKeyListener);
     recipientTextField.addKeyListener(recipientKeyListener);
-    sendButton.addKeyListener(allComponentsKeyListener);
-    resetButton.addKeyListener(allComponentsKeyListener);
-    countTextField.addKeyListener(allComponentsKeyListener);
   }
 
   private void indentLine(boolean b) {
@@ -792,7 +925,6 @@ public class ViewImpl extends JFrame {
 
   }
 
-
   private void sendMessage(String recipient, String htfText, String taText) throws Exception {
     int times;
     try {
@@ -842,31 +974,7 @@ public class ViewImpl extends JFrame {
       rsb.append("!");
     }
     recipientLabel.setText(rsb.toString());
-    pp.remove("headerbox");
-    pp.remove("textbox");
-    pp.remove("recipientbox");
   }
-
-  /**
-   * The database of people who can be emailed.
-   *
-   * @param s the name of the person
-   * @return the email address
-   */
-  private String personToEmailD(String s) {
-    if (s.substring(0, 1).equalsIgnoreCase("k")) {
-      return "keith.kondapi@gmail.com";
-    }
-    if (s.substring(0, 1).equalsIgnoreCase("a")) {
-      return "replyali10@gmail.com";
-    }
-    if (s.substring(0, 1).equalsIgnoreCase("z")) {
-      return "reply2zain@gmail.com";
-    } else {
-      throw new IllegalArgumentException("Cannot find person in database.");
-    }
-  }
-
 
   private void resetFields() {
     resetLabel();
