@@ -69,6 +69,7 @@ public class ViewImpl extends JFrame {
 
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
+    String version = "Version 4.1.9";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
     super.setIconImage(i);
@@ -81,7 +82,6 @@ public class ViewImpl extends JFrame {
     countTextField.setColumns(3);
     stopButton = new JButton("Stop");
     this.isStopped = false;
-
     taskMode = false;
     undoLinkedList = new LinkedList<>();
     currentUndoIndex = 0;
@@ -91,7 +91,7 @@ public class ViewImpl extends JFrame {
     JMenu fileMenu = new JMenu("File");
     JMenuItem advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
-    JMenu versionMenu = new JMenu("Version 4.1.7");
+    JMenu versionMenu = new JMenu(version);
     mb.add(fileMenu);
     mb.add(advancedMenu);
     mb.add(helpMenu);
@@ -177,20 +177,21 @@ public class ViewImpl extends JFrame {
     pp = ProgramPreferences.userRoot().node("prefs");
     isDarkMode = !pp.get("dark", "false").equals("false");
 
+    //addToTheUndoList();
     activeColorTheme();
-    String ppTextBoxString = pp.get("textbox", "empty");
-    if (!ppTextBoxString.equals("empty")) {
+    String ppTextBoxString = pp.get("textbox", "");
+    if (!ppTextBoxString.equals("")) {
       textBox.setText(ppTextBoxString);
     }
-    String ppHeaderBoxString = pp.get("headerbox", "empty");
+    String ppHeaderBoxString = pp.get("headerbox", "");
     if (!ppTextBoxString.equals("empty")) {
       headerTextField.setText(ppHeaderBoxString);
     }
     String ppRecipientString = pp.get("recipientbox", "");
     if (!ppRecipientString.isBlank()) {
       sendButton.setText("Send");
+      recipientTextField.setText(ppRecipientString);
     }
-
     addToTheUndoList();
 
     initializeActionListeners();
@@ -625,7 +626,6 @@ public class ViewImpl extends JFrame {
           textBox.setText(sb.toString());
           textBox.setCaretPosition(cp + addAnIndex);
         }
-        pp.put("textbox", textBox.getText());
         if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
             .startsWith("Sent")) {
           resetLabel();
@@ -653,6 +653,7 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyReleased(KeyEvent e) {
         pressedKeys.remove(e.getKeyCode());
+        pp.put("textbox", textBox.getText());
       }
     };
 
@@ -669,7 +670,6 @@ public class ViewImpl extends JFrame {
         } else if (sbt.indexOf("a") == 1) {
           sendButton.setText("Send");
         }
-        pp.put("recipientbox", recipientTextField.getText());
       }
 
       @Override
@@ -686,6 +686,7 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyReleased(KeyEvent e) {
         pressedKeys.remove(e.getKeyCode());
+        pp.put("recipientbox", recipientTextField.getText());
       }
     };
 
@@ -694,7 +695,6 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void keyTyped(KeyEvent e) {
-        pp.put("headerbox", headerTextField.getText());
         if (e.getKeyChar() == KeyEvent.VK_ENTER) {
           textBox.grabFocus();
         } else if (recipientLabel.getText().startsWith("Sa") || recipientLabel.getText()
@@ -717,6 +717,7 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyReleased(KeyEvent e) {
         pressedKeys.remove(e.getKeyCode());
+        pp.put("headerbox", headerTextField.getText());
       }
     };
 
@@ -769,18 +770,6 @@ public class ViewImpl extends JFrame {
 
     StringBuilder newText = new StringBuilder();
     int moveCursorBack = 0;
-
-/*            if(text.length() > textBox.getColumns()) {
-              StringBuilder newString = new StringBuilder();
-              int j = 0;
-              for (int i = text.length()/ textBox.getWidth() - 5 ; i > 0; i--) {
-                int newLength = Math.min(textBox.getWidth()*j - 5 * (j + 1), text.length());
-                newString.append(text.substring(textBox.getWidth() - 5 * j, newLength));
-                newString.append("\t");
-                j++;
-              }
-              text = newString.toString();
-            }*/
 
     if (arrayIndex < textArray.length) {
       moveCursorBack += (textArray[arrayIndex].length() + 1);
@@ -853,6 +842,9 @@ public class ViewImpl extends JFrame {
       rsb.append("!");
     }
     recipientLabel.setText(rsb.toString());
+    pp.remove("headerbox");
+    pp.remove("textbox");
+    pp.remove("recipientbox");
   }
 
   /**
@@ -882,8 +874,9 @@ public class ViewImpl extends JFrame {
     headerTextField.setText("");
     textBox.setText("");
     taskModeMenuAction();
-    pp.remove("textbox");
     pp.remove("headerbox");
+    pp.remove("textbox");
+    pp.remove("recipientbox");
   }
 
   private void resetLabel() {
