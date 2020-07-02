@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Image;
@@ -17,6 +18,7 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -75,7 +77,7 @@ public class ViewImpl extends JFrame {
     super.setIconImage(i);
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
-    String version = "Version 4.2.0";
+    String version = "Version 4.2.1";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
@@ -188,11 +190,6 @@ public class ViewImpl extends JFrame {
     isDarkMode = !pp.get("dark", "false").equals("false");
     isWelcomeScreenOnStart = pp.get("welcome", "true").equals("true");
 
-    if (!isWelcomeScreenOnStart) {
-      welcomeScreenMenuItem.setText("Enable welcome screen");
-    }
-    advancedMenu.add(welcomeScreenMenuItem);
-
     activeColorTheme();
     String ppTextBoxString = pp.get("textbox", "");
     if (!ppTextBoxString.equals("")) {
@@ -216,14 +213,17 @@ public class ViewImpl extends JFrame {
     if (isWelcomeScreenOnStart) {
       Color exp = new Color(237, 248, 252);
       JPanel welcomePage = initializeWelcomePage(i, exp);
-      frame.setMaximumSize(welcomePage.getSize());
-      frame.setMinimumSize(welcomePage.getSize());
       frame.add(welcomePage);
       bottomPanel.setVisible(false);
       topPanel.setVisible(false);
       centerPanel.setVisible(false);
       advancedMenu.setVisible(false);
+      frame.setResizable(false);
+      frame.setBackground(new Color(199, 238, 255));
+    } else {
+      welcomeScreenMenuItem.setText("Enable welcome screen");
     }
+    advancedMenu.add(welcomeScreenMenuItem);
 
     //Adding Components to the frame.
 
@@ -255,13 +255,20 @@ public class ViewImpl extends JFrame {
     }
   }
 
+  /**
+   * Initializes most aspects of the welcome page
+   *
+   * @param image the app's icon image
+   * @param exp   the main color theme
+   * @return the welcome page
+   */
   private JPanel initializeWelcomePage(Image image, Color exp) {
     JPanel welcomePage = new JPanel();
     welcomePage.setSize(480, 390);
     welcomePage.setLayout(new BoxLayout(welcomePage, BoxLayout.PAGE_AXIS));
     JLabel welcomeTopLabel = new JLabel("Welcome to the AutoEmailer!");
     welcomeTopLabel.setFont(new Font("Verdana", Font.BOLD, 18));
-    ImageIcon imageIcon = new ImageIcon(image.getScaledInstance(401, 271, 0));
+    ImageIcon imageIcon = new ImageIcon(image.getScaledInstance(379, 256, 0));
     JLabel icon = new JLabel(imageIcon);
     JLabel devName = new JLabel("Developed by Zain");
     devName.setFont(new Font("Courier New", Font.ITALIC, 14));
@@ -283,8 +290,8 @@ public class ViewImpl extends JFrame {
         topPanel.setVisible(true);
         bottomPanel.setVisible(true);
         centerPanel.setVisible(true);
-        frame.setMaximumSize(null);
-        frame.setMinimumSize(null);
+        frame.setResizable(true);
+        frame.setBackground(appleWhite);
         advancedMenu.setVisible(true);
       }
 
@@ -316,6 +323,7 @@ public class ViewImpl extends JFrame {
         continueButton.setLocation(continueButton.getX() + 9, continueButton.getY() + 2);
       }
     });
+    welcomePage.add(Box.createRigidArea(new Dimension(1, 10)));
     welcomePage.add(welcomeTopLabel);
     welcomePage.add(icon);
     welcomePage.add(devName);
@@ -330,8 +338,8 @@ public class ViewImpl extends JFrame {
           topPanel.setVisible(true);
           bottomPanel.setVisible(true);
           centerPanel.setVisible(true);
-          frame.setMaximumSize(null);
-          frame.setMinimumSize(null);
+          frame.setResizable(true);
+          frame.setBackground(appleWhite);
           advancedMenu.setVisible(true);
         }
       }
