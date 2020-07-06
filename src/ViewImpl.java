@@ -77,7 +77,7 @@ public class ViewImpl extends JFrame {
     super.setIconImage(i);
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
-    String version = "Version 4.2.1";
+    String version = "Version 4.2.2";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
@@ -236,18 +236,12 @@ public class ViewImpl extends JFrame {
   } // end constructor -------------------------------------------------------
 
   /**
-   * The database of people who can be emailed.
+   * A small database of people who can be emailed.
    *
    * @param s the name of the person
    * @return the email address
    */
   private static String personToEmailD(String s) {
-    if (s.substring(0, 1).equalsIgnoreCase("k")) {
-      return "keith.kondapi@gmail.com";
-    }
-    if (s.substring(0, 1).equalsIgnoreCase("a")) {
-      return "replyali10@gmail.com";
-    }
     if (s.substring(0, 1).equalsIgnoreCase("z")) {
       return "reply2zain@gmail.com";
     } else {
@@ -272,7 +266,7 @@ public class ViewImpl extends JFrame {
     JLabel icon = new JLabel(imageIcon);
     JLabel devName = new JLabel("Developed by Zain");
     devName.setFont(new Font("Courier New", Font.ITALIC, 14));
-    JLabel devNameS = new JLabel(" ");
+    JLabel devNameSpacer = new JLabel(" ");
     JButton continueButton = new JButton("Continue");
     welcomeTopLabel.setAlignmentX(CENTER_ALIGNMENT);
     welcomeTopLabel.setAlignmentY(CENTER_ALIGNMENT);
@@ -327,7 +321,7 @@ public class ViewImpl extends JFrame {
     welcomePage.add(welcomeTopLabel);
     welcomePage.add(icon);
     welcomePage.add(devName);
-    welcomePage.add(devNameS);
+    welcomePage.add(devNameSpacer);
     welcomePage.add(continueButton);
     continueButton.grabFocus();
     continueButton.addKeyListener(new KeyListener() {
@@ -385,7 +379,7 @@ public class ViewImpl extends JFrame {
     return new MouseListener() {
       @Override
       public void mouseClicked(MouseEvent e) {
-        // left blank
+        // intentionally left blank
       }
 
       @Override
@@ -606,6 +600,9 @@ public class ViewImpl extends JFrame {
 
   }
 
+  /**
+   * Using the mode type (i.e. dark, light), applies all the effects to the GUI.
+   */
   private void activeColorTheme() {
     // removes the preset button paint
     sendButton.setOpaque(true);
@@ -964,7 +961,6 @@ public class ViewImpl extends JFrame {
       JavaMailUtil.sendMail(recipient, htfText, taText);
     }
 
-    //JavaMailUtil.sendMail("sendreplyza@gmail.com", htfText + " - " + name, taText);
     if (isDarkMode) {
       recipientLabel.setForeground(new Color(0, 190, 80));
     } else {
@@ -987,6 +983,7 @@ public class ViewImpl extends JFrame {
   private void resetFields() {
     resetLabel();
     recipientTextField.setText("");
+    sendButton.setText("Save");
     headerTextField.setText("");
     textBox.setText("");
     taskModeMenuAction();
