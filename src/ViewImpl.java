@@ -3,6 +3,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
@@ -45,13 +46,15 @@ public class ViewImpl extends JFrame {
   private final JTextField recipientTextField;
   private final JTextField headerTextField;
   private final JTextField countTextField;
+  private JTextField userTextField;
+  private JTextField passTextField;
   private final JButton sendButton;
   private final JButton resetButton;
   private final JButton stopButton;
   private final JMenuItem counterMenuItem;
   private final JMenuItem taskModeMenuItem;
-  private final JMenuItem emailToMenuItem;
   private final JMenuItem darkLightMenuItem;
+  private final JMenuItem logOutMenuItem;
   private final JPanel centerPanel;
   private final JPanel bottomPanel;
   private final JPanel topPanel;
@@ -72,16 +75,24 @@ public class ViewImpl extends JFrame {
   private boolean isDarkMode;
   private int currentUndoIndex;
   private boolean isWelcomeScreenOnStart;
+  private String user;
+  private String pass;
+  private boolean hasUserAndPass;
+  private JavaMailUtil jm;
+  private final Image welcomeImage;
+  private JPanel welcomePage;
+  private JMenu fileMenu;
 
   ViewImpl(Image i) {
+    welcomeImage = i;
     super.setIconImage(i);
     // sets the name of the person to email - leave blank unless dedicated
     this.name = "";
-    String version = "Version 4.2.2";
+    String version = "Version 5.0.1";
 
     frame = new JFrame(name.concat(" Auto Emailer"));
     frame.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
-    frame.setSize(480, 390);
+    frame.setSize(480, 350);
     frame.setLocationRelativeTo(null);
 
     countTextField = new JTextField();
@@ -92,10 +103,9 @@ public class ViewImpl extends JFrame {
     taskMode = false;
     undoLinkedList = new LinkedList<>();
     currentUndoIndex = 0;
-
     //Creating the MenuBar and adding components
     JMenuBar mb = new JMenuBar();
-    JMenu fileMenu = new JMenu("File");
+    fileMenu = new JMenu("File");
     advancedMenu = new JMenu("Advanced");
     JMenu helpMenu = new JMenu("Help");
     JMenu versionMenu = new JMenu(version);
@@ -105,7 +115,6 @@ public class ViewImpl extends JFrame {
     mb.add(versionMenu);
     JMenuItem m11 = new JMenuItem("Open");
     JMenuItem m12 = new JMenuItem("Save as");
-    emailToMenuItem = new JMenuItem("Email me");
     counterMenuItem = new JMenuItem("Show counter");
     taskModeMenuItem = new JMenuItem("Enable task mode");
     resetMenuItem = new JMenuItem("Reset");
@@ -113,6 +122,7 @@ public class ViewImpl extends JFrame {
     redoMenuItem = new JMenuItem("Redo");
     quitMenuItem = new JMenuItem("Quit");
     welcomeScreenMenuItem = new JMenuItem("Disable welcome screen");
+    logOutMenuItem = new JMenuItem("Logout");
     fileMenu.add(m11);
     fileMenu.add(m12);
     frame.add(resetMenuItem);
@@ -120,15 +130,12 @@ public class ViewImpl extends JFrame {
     frame.add(redoMenuItem);
     frame.add(quitMenuItem);
     advancedMenu.add(counterMenuItem);
-    advancedMenu.add(emailToMenuItem);
     advancedMenu.add(taskModeMenuItem);
     showCounter = false;
     emailAnyone = true;
     int metaKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
     taskModeMenuItem.setAccelerator(KeyStroke
         .getKeyStroke(KeyEvent.VK_T, metaKey));
-    emailToMenuItem.setAccelerator(KeyStroke
-        .getKeyStroke(KeyEvent.VK_E, metaKey));
     resetMenuItem.setAccelerator(KeyStroke
         .getKeyStroke(KeyEvent.VK_R, metaKey));
     undoMenuItem.setAccelerator(KeyStroke
@@ -189,7 +196,9 @@ public class ViewImpl extends JFrame {
     pp = ProgramPreferences.userRoot().node("prefs");
     isDarkMode = !pp.get("dark", "false").equals("false");
     isWelcomeScreenOnStart = pp.get("welcome", "true").equals("true");
-
+    user = pp.get("user", "f");
+    pass = pp.get("pass", "f");
+    hasUserAndPass = !user.equalsIgnoreCase("f") && !pass.equalsIgnoreCase("f");
     activeColorTheme();
     String ppTextBoxString = pp.get("textbox", "");
     if (!ppTextBoxString.equals("")) {
@@ -205,21 +214,18 @@ public class ViewImpl extends JFrame {
       recipientTextField.setText(ppRecipientString);
     }
 
+    if (hasUserAndPass){
+    fileMenu.add(logOutMenuItem);
+    }
+
     addToTheUndoList();
     initializeActionListeners();
     initializeKeyListeners();
     initializeMouseListeners();
 
-    if (isWelcomeScreenOnStart) {
-      Color exp = new Color(237, 248, 252);
-      JPanel welcomePage = initializeWelcomePage(i, exp);
-      frame.add(welcomePage);
-      bottomPanel.setVisible(false);
-      topPanel.setVisible(false);
-      centerPanel.setVisible(false);
-      advancedMenu.setVisible(false);
-      frame.setResizable(false);
-      frame.setBackground(new Color(199, 238, 255));
+    // Welcome Screen Setup and Frame
+    if (isWelcomeScreenOnStart || !hasUserAndPass) {
+      displayWelcomeScreen();
     } else {
       welcomeScreenMenuItem.setText("Enable welcome screen");
     }
@@ -236,17 +242,19 @@ public class ViewImpl extends JFrame {
   } // end constructor -------------------------------------------------------
 
   /**
-   * A small database of people who can be emailed.
-   *
-   * @param s the name of the person
-   * @return the email address
+   * Initializes and then displays the welcome screen
    */
-  private static String personToEmailD(String s) {
-    if (s.substring(0, 1).equalsIgnoreCase("z")) {
-      return "reply2zain@gmail.com";
-    } else {
-      throw new IllegalArgumentException("Cannot find person in database.");
-    }
+  private void displayWelcomeScreen() {
+    Color welcomeBackgroundColor = new Color(199, 238, 255);
+    welcomePage = initializeWelcomePage(welcomeImage, welcomeBackgroundColor);
+    frame.add(welcomePage);
+    bottomPanel.setVisible(false);
+    topPanel.setVisible(false);
+    centerPanel.setVisible(false);
+    advancedMenu.setVisible(false);
+    frame.setSize(new Dimension(welcomePage.getWidth(), welcomePage.getHeight()));
+    frame.setResizable(false);
+    frame.setBackground(new Color(199, 238, 255));
   }
 
   /**
@@ -258,13 +266,20 @@ public class ViewImpl extends JFrame {
    */
   private JPanel initializeWelcomePage(Image image, Color exp) {
     JPanel welcomePage = new JPanel();
-    welcomePage.setSize(480, 390);
+    welcomePage.setSize(480, 400);
     welcomePage.setLayout(new BoxLayout(welcomePage, BoxLayout.PAGE_AXIS));
     JLabel welcomeTopLabel = new JLabel("Welcome to the AutoEmailer!");
     welcomeTopLabel.setFont(new Font("Verdana", Font.BOLD, 18));
     ImageIcon imageIcon = new ImageIcon(image.getScaledInstance(379, 256, 0));
     JLabel icon = new JLabel(imageIcon);
     JLabel devName = new JLabel("Developed by Zain");
+    if (!hasUserAndPass) {
+      welcomePage.setSize(480, 450);
+      userTextField = new JTextField();
+      userTextField.setMaximumSize(new Dimension(300, 20));
+      passTextField = new JTextField();
+      passTextField.setMaximumSize(new Dimension(300, 20));
+    }
     devName.setFont(new Font("Courier New", Font.ITALIC, 14));
     JLabel devNameSpacer = new JLabel(" ");
     JButton continueButton = new JButton("Continue");
@@ -276,17 +291,46 @@ public class ViewImpl extends JFrame {
     continueButton.setAlignmentY(BOTTOM_ALIGNMENT);
     continueButton.setOpaque(true);
     continueButton.setBorderPainted(false);
-    continueButton.setBackground(exp);
+    continueButton.setBackground(new Color(237, 248, 252));
     continueButton.addMouseListener(new MouseListener() {
       @Override
       public void mouseClicked(MouseEvent e) {
-        welcomePage.setVisible(false);
-        topPanel.setVisible(true);
-        bottomPanel.setVisible(true);
-        centerPanel.setVisible(true);
-        frame.setResizable(true);
-        frame.setBackground(appleWhite);
-        advancedMenu.setVisible(true);
+        boolean userEntryGood = true;
+        boolean passEntryGood = true;
+        if (!hasUserAndPass) {
+          if (!userTextField.getText().contains("@")) {
+            userTextField.setBackground(Color.PINK);
+            userEntryGood = false;
+          } else {
+            userTextField.setBackground(Color.WHITE);
+            userEntryGood = true;
+          }
+          if (passTextField.getText().strip().length() < 1) {
+            passTextField.setBackground(Color.PINK);
+            passEntryGood = false;
+          } else {
+            passTextField.setBackground(Color.WHITE);
+            passEntryGood = true;
+          }
+        }
+        if (userEntryGood && passEntryGood){
+          centerPanel.setVisible(true);
+          frame.remove(centerPanel);
+          frame.add(centerPanel);
+          fileMenu.add(logOutMenuItem);
+          welcomePage.setVisible(false);
+          frame.remove(welcomePage);
+          topPanel.setVisible(true);
+          bottomPanel.setVisible(true);
+          frame.setResizable(true);
+          frame.setBackground(appleWhite);
+          advancedMenu.setVisible(true);
+          if (!hasUserAndPass) {
+            JavaMailUtil.setCredentials(userTextField.getText(), passTextField.getText());
+            pp.put("user", userTextField.getText());
+            pp.put("pass", passTextField.getText());
+          }
+        }
       }
 
       @Override
@@ -310,7 +354,7 @@ public class ViewImpl extends JFrame {
 
       @Override
       public void mouseExited(MouseEvent e) {
-        continueButton.setBackground(exp);
+        continueButton.setBackground(new Color(237, 248, 252));
         continueButton.setSize(101, 29);
         continueButton.setFont(new Font("Lucida Grande", Font.PLAIN, 13));
         continueButton.setForeground(Color.DARK_GRAY);
@@ -319,8 +363,31 @@ public class ViewImpl extends JFrame {
     });
     welcomePage.add(Box.createRigidArea(new Dimension(1, 10)));
     welcomePage.add(welcomeTopLabel);
-    welcomePage.add(icon);
     welcomePage.add(devName);
+    welcomePage.add(icon);
+    welcomePage.add(devNameSpacer);
+    if (!hasUserAndPass) {
+      JPanel containerUser = new JPanel();
+      JLabel userLabel = new JLabel("Username: ");
+      containerUser.setLayout(new GridLayout(1, 2));
+      containerUser.setMaximumSize(new Dimension(230, 20));
+      containerUser.setBackground(exp);
+      containerUser.add(userLabel);
+      containerUser.add(userTextField);
+      JPanel containerPass = new JPanel();
+      JLabel passLabel = new JLabel("Password: ");
+      containerPass.setLayout(new GridLayout(1, 2));
+      containerPass.setMaximumSize(new Dimension(230, 20));
+      containerPass.setBackground(exp);
+      containerPass.add(passLabel);
+      containerPass.add(passTextField);
+      welcomePage.add(containerUser);
+      JPanel smallSpacer = new JPanel();
+      smallSpacer.setBackground(exp);
+      smallSpacer.setMaximumSize(new Dimension(100, 5));
+      welcomePage.add(smallSpacer);
+      welcomePage.add(containerPass);
+    }
     welcomePage.add(devNameSpacer);
     welcomePage.add(continueButton);
     continueButton.grabFocus();
@@ -328,10 +395,10 @@ public class ViewImpl extends JFrame {
       @Override
       public void keyTyped(KeyEvent e) {
         if (e.getKeyChar() == KeyEvent.VK_ENTER || e.getKeyChar() == KeyEvent.VK_SPACE) {
+          centerPanel.setVisible(true);
           welcomePage.setVisible(false);
           topPanel.setVisible(true);
           bottomPanel.setVisible(true);
-          centerPanel.setVisible(true);
           frame.setResizable(true);
           frame.setBackground(appleWhite);
           advancedMenu.setVisible(true);
@@ -348,7 +415,7 @@ public class ViewImpl extends JFrame {
 
       }
     });
-    welcomePage.setBackground(new Color(199, 238, 255));
+    welcomePage.setBackground(exp);
     return welcomePage;
   }
 
@@ -362,8 +429,9 @@ public class ViewImpl extends JFrame {
       recipientTextField.setText("");
       recipientTextField.setVisible(true);
     } else {
+      // Depreciated
       recipientLabel.setText("Send to ".concat(name).concat(":"));
-      recipientTextField.setText(personToEmailD(name));
+      // recipientTextField.setText(personToEmailD(name));
       recipientTextField.setVisible(false);
     }
     //frame.setName(" Auto Emailer");
@@ -478,21 +546,6 @@ public class ViewImpl extends JFrame {
       pp.remove("recipientbox");
     });
 
-    emailToMenuItem.addActionListener(e -> {
-      emailAnyone = !emailAnyone;
-      if (emailAnyone) {
-        emailToMenuItem.setText("Email me");
-        name = "";
-        sendButton.setText("Save");
-      } else {
-        emailToMenuItem.setText("Email anyone");
-        name = "Zain";
-        sendButton.setText("Send");
-      }
-      updateRecipientComponents();
-      setTitle();
-    });
-
     darkLightMenuItem.addActionListener(e -> {
       isDarkMode = !isDarkMode;
       activeColorTheme();
@@ -528,6 +581,16 @@ public class ViewImpl extends JFrame {
         countTextField.setVisible(false);
         frame.setSize(480, frame.getHeight());
       }
+    });
+
+    logOutMenuItem.addActionListener(e -> {
+      pp.put("user", "f");
+      pp.put("pass", "f");
+      hasUserAndPass = false;
+      fileMenu.remove(logOutMenuItem);
+      frame.remove(welcomePage);
+      displayWelcomeScreen();
+
     });
 
     undoMenuItem.addActionListener(e -> {
