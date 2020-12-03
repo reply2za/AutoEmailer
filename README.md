@@ -1,3 +1,3 @@
 # AutoEmailer - Email Client
 
-![alt text](welcomePage.png)
+![alt text](resources/welcomePage.png)
